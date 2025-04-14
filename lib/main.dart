@@ -1,5 +1,5 @@
 import 'package:alarm/alarm.dart';
-import 'package:alarm_from_hell/ui/alarm_ring_page.dart';
+import 'package:alarm_from_hell/ui/alarm_exit/alarm_exit_page.dart';
 import 'package:alarm_from_hell/ui/home_page.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
@@ -72,7 +72,7 @@ class MyApp extends StatelessWidget {
       navigatorKey: _navigatorKey, // 전역 내비게이터 키 설정
       home: HomePage(),
       debugShowCheckedModeBanner: false,
-      routes: {'/alarm_ring_page': (context) => AlarmRingPage()},
+      routes: {'/alarm_ring_page': (context) => AlarmExitPage()},
     );
   }
 }

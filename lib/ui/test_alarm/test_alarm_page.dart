@@ -5,6 +5,7 @@ import 'package:alarm/model/alarm_settings.dart';
 import 'package:alarm/model/notification_settings.dart';
 import 'package:alarm/model/volume_settings.dart';
 import 'package:alarm_from_hell/core/constants/sound_constants.dart';
+import 'package:alarm_from_hell/ui/alarm_exit/alarm_exit_page.dart';
 import 'package:flutter/material.dart';
 
 class TestAlarmPage extends StatefulWidget {
@@ -61,6 +62,10 @@ class _TestAlarmPageState extends State<TestAlarmPage> {
   }
 
   Future<void> cancelTestAlarm() async {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => AlarmExitPage()),
+    );
     await Alarm.stop(alarmId);
   }
 

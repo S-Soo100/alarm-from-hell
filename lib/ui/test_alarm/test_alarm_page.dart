@@ -30,11 +30,11 @@ class _TestAlarmPageState extends State<TestAlarmPage> {
       assetAudioPath: SoundConstants.testAlarmSound,
       loopAudio: true,
       vibrate: true,
-      warningNotificationOnKill: Platform.isIOS,
+      warningNotificationOnKill: true,
       androidFullScreenIntent: true,
       volumeSettings: VolumeSettings.fade(
-        volume: 0.2,
-        fadeDuration: Duration(seconds: 5),
+        volume: Platform.isIOS ? 1.0 : 0.2,
+        fadeDuration: Duration(seconds: 3),
         volumeEnforced: true,
       ),
       notificationSettings: const NotificationSettings(
@@ -51,6 +51,10 @@ class _TestAlarmPageState extends State<TestAlarmPage> {
 
   void setTestAlarm() async {
     if (myAlarmSettings != null) {
+      if (Platform.isIOS) {
+        print("iOS에서 알람을 설정합니다. 백그라운드 모드에서 알림이 표시되는지 확인하세요.");
+      }
+
       await Alarm.set(alarmSettings: myAlarmSettings!);
       alarmId = myAlarmSettings!.id;
     }
@@ -97,7 +101,6 @@ class _TestAlarmPageState extends State<TestAlarmPage> {
             ),
             ElevatedButton(
               onPressed: () async {
-                // await cancelTestAlarm();
                 await Alarm.set(alarmSettings: myAlarmSettings!);
                 ScaffoldMessenger.of(
                   context,

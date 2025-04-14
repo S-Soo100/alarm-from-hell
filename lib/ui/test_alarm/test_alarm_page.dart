@@ -16,13 +16,15 @@ class TestAlarmPage extends StatefulWidget {
 
 class _TestAlarmPageState extends State<TestAlarmPage> {
   DateTime time = DateTime.now();
-  AlarmSettings? alarmSettings;
+  AlarmSettings? myAlarmSettings;
+
+  int alarmId = 0;
 
   @override
   void initState() {
     super.initState();
 
-    alarmSettings = AlarmSettings(
+    myAlarmSettings = AlarmSettings(
       id: 42,
       dateTime: time.add(Duration(seconds: 10)),
       assetAudioPath: SoundConstants.testAlarmSound,
@@ -31,14 +33,14 @@ class _TestAlarmPageState extends State<TestAlarmPage> {
       warningNotificationOnKill: Platform.isIOS,
       androidFullScreenIntent: true,
       volumeSettings: VolumeSettings.fade(
-        volume: 0.8,
+        volume: 0.2,
         fadeDuration: Duration(seconds: 5),
         volumeEnforced: true,
       ),
       notificationSettings: const NotificationSettings(
-        title: 'This is the title',
-        body: 'This is the body',
-        stopButton: 'Stop the alarm',
+        title: '알람 알림',
+        body: '알람 시간입니다! 확인해주세요.',
+        stopButton: '알람 끄기',
         icon: 'notification_icon',
         iconColor: Color(0xff862778),
       ),
@@ -48,9 +50,14 @@ class _TestAlarmPageState extends State<TestAlarmPage> {
   }
 
   void setTestAlarm() async {
-    if (alarmSettings != null) {
-      await Alarm.set(alarmSettings: alarmSettings!);
+    if (myAlarmSettings != null) {
+      await Alarm.set(alarmSettings: myAlarmSettings!);
+      alarmId = myAlarmSettings!.id;
     }
+  }
+
+  Future<void> cancelTestAlarm() async {
+    await Alarm.stop(alarmId);
   }
 
   @override
@@ -58,9 +65,46 @@ class _TestAlarmPageState extends State<TestAlarmPage> {
     return Material(
       child: Center(
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('alarm setting'),
-            Text("${alarmSettings!.id.toString()}"),
+            Text('알람 설정 완료'),
+            Text("알람 ID: ${myAlarmSettings!.id.toString()}"),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () async {
+                final newAlarmSettings = myAlarmSettings!.copyWith(
+                  dateTime: DateTime.now().add(Duration(seconds: 10)),
+                );
+                setState(() {
+                  myAlarmSettings = newAlarmSettings;
+                });
+                await Alarm.set(alarmSettings: newAlarmSettings);
+
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text('알람이 10초 후로 설정되었습니다')));
+              },
+              child: Text('알람 재설정 (10초 후)'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                await cancelTestAlarm();
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text('알람이 종료 되었습니다.')));
+              },
+              child: Text('제발 그만 말해'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                // await cancelTestAlarm();
+                await Alarm.set(alarmSettings: myAlarmSettings!);
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text('재시작')));
+              },
+              child: Text('다시 말해 말해'),
+            ),
           ],
         ),
       ),

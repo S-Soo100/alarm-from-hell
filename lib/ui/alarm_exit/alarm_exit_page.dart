@@ -1,5 +1,6 @@
 import 'package:alarm/alarm.dart';
 import 'package:alarm/model/alarm_settings.dart';
+import 'package:alarm_from_hell/core/utils/random_sentense.dart';
 import 'package:flutter/material.dart';
 
 class AlarmExitPage extends StatefulWidget {
@@ -13,7 +14,14 @@ class _AlarmExitPageState extends State<AlarmExitPage> {
   AlarmSettings? alarmSettings;
   final TextEditingController _textController = TextEditingController();
   bool _isTextCorrect = false;
-  final String _targetText = "이 문장을 그대로 따라 치세요";
+  String _targetText = "우리는 어제의 오늘보다 더 나은 내일을 꿈꾸며 나아갑니다.";
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    _targetText = RandomSentense.getRandomSentense();
+  }
 
   @override
   void dispose() {

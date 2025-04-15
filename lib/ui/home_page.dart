@@ -1,5 +1,6 @@
 import 'package:alarm_from_hell/component/alarm_list_widget.dart';
 import 'package:alarm_from_hell/component/next_alarm_time_widget.dart';
+import 'package:alarm_from_hell/domain/services/next_alarm_time_serivce.dart';
 import 'package:alarm_from_hell/ui/test_alarm/test_alarm_page.dart';
 import 'package:flutter/material.dart';
 
@@ -12,6 +13,15 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   bool _isModalOn = false;
+  NextAlarmTimeSerivce? _nextTimeService;
+  String nextAlarm = "다음 알람이 없습니다";
+
+  @override
+  void initState() {
+    super.initState();
+    _nextTimeService = NextAlarmTimeSerivce();
+    nextAlarm = _nextTimeService!.getNextAlarmTimeService();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +51,7 @@ class _HomePageState extends State<HomePage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  NextAlarmTimeWidget(),
+                  NextAlarmTimeWidget(nextAlarmTime: nextAlarm),
                   AlarmListWidget(),
                   TestAlarmPage(),
                 ],

@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 
-class NextAlarmTimeWidget extends StatefulWidget {
-  const NextAlarmTimeWidget({super.key});
+class NextAlarmTimeWidget extends StatelessWidget {
+  const NextAlarmTimeWidget({super.key, required this.nextAlarmTime});
 
-  @override
-  State<NextAlarmTimeWidget> createState() => _NextAlarmTimeWidgetState();
-}
+  final String nextAlarmTime;
 
-class _NextAlarmTimeWidgetState extends State<NextAlarmTimeWidget> {
   @override
   Widget build(BuildContext context) {
     return Material(
@@ -21,7 +18,7 @@ class _NextAlarmTimeWidgetState extends State<NextAlarmTimeWidget> {
           alignment: Alignment.center,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: [Text("다음 알람은 00000시 입니다.")],
+            children: [Text(nextAlarmTime)],
           ),
         ),
       ),

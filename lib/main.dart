@@ -5,12 +5,54 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 // import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:alarm_from_hell/core/constants/storage_constants.dart';
 
 // 전역 내비게이터 키
 final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
+// 전역 테마 상태 관리
+class ThemeProvider extends ChangeNotifier {
+  ThemeMode _themeMode = ThemeMode.dark;
+
+  ThemeMode get themeMode => _themeMode;
+
+  bool get isDarkMode => _themeMode == ThemeMode.dark;
+
+  // Hive에서 테마 설정 로드
+  Future<void> loadThemeFromHive() async {
+    final box = await Hive.openBox(StorageConstants.themeBoxName);
+    final isDark =
+        box.get(StorageConstants.isDarkModeKey, defaultValue: true) as bool;
+    setDarkMode(isDark);
+  }
+
+  // Hive에 테마 설정 저장
+  Future<void> saveThemeToHive(bool isDark) async {
+    final box = await Hive.openBox(StorageConstants.themeBoxName);
+    await box.put(StorageConstants.isDarkModeKey, isDark);
+  }
+
+  void toggleTheme() {
+    _themeMode = isDarkMode ? ThemeMode.light : ThemeMode.dark;
+    saveThemeToHive(!isDarkMode);
+    notifyListeners();
+  }
+
+  void setDarkMode(bool isDark) {
+    _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
+    notifyListeners();
+  }
+}
+
+final themeProvider = ThemeProvider();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Hive 초기화
+  await Hive.initFlutter();
 
   // 알람 초기화
   await Alarm.init();
@@ -20,6 +62,9 @@ void main() async {
 
   // 알림 권한 요청 (Android 및 iOS 모두)
   await requestNotificationPermissions();
+
+  // 저장된 테마 설정 로드
+  await themeProvider.loadThemeFromHive();
 
   runApp(const MyApp());
 }
@@ -61,8 +106,22 @@ Future<void> requestNotificationPermissions() async {
   }
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    // 테마 변경을 감지하여 화면 갱신
+    themeProvider.addListener(() {
+      setState(() {});
+    });
+  }
 
   // This widget is the root of your application.
   @override
@@ -70,6 +129,73 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Alarm From Hell',
       navigatorKey: _navigatorKey, // 전역 내비게이터 키 설정
+      themeMode: themeProvider.themeMode,
+      theme: ThemeData.light().copyWith(
+        primaryColor: Color(0xFF1F2E36),
+        scaffoldBackgroundColor: Colors.white,
+        appBarTheme: AppBarTheme(
+          backgroundColor: Color(0xFF1F2E36),
+          elevation: 0,
+          iconTheme: IconThemeData(color: Colors.white),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Color(0xFF1F2E36),
+            foregroundColor: Colors.white,
+          ),
+        ),
+        iconTheme: IconThemeData(color: Colors.black87),
+        textTheme: TextTheme(
+          bodyLarge: TextStyle(color: Colors.black87),
+          bodyMedium: TextStyle(color: Colors.black87),
+          titleLarge: TextStyle(color: Colors.black87),
+          titleMedium: TextStyle(color: Colors.black87),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          border: OutlineInputBorder(
+            borderSide: BorderSide(color: Colors.grey.shade400),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: Colors.grey.shade400),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: Color(0xFF1F2E36)),
+          ),
+        ),
+      ),
+      darkTheme: ThemeData.dark().copyWith(
+        primaryColor: Color(0xFF1F2E36),
+        scaffoldBackgroundColor: Color(0xFF121212),
+        appBarTheme: AppBarTheme(
+          backgroundColor: Color(0xFF1F2E36),
+          elevation: 0,
+          iconTheme: IconThemeData(color: Colors.white),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Color(0xFF1F2E36),
+            foregroundColor: Colors.white,
+          ),
+        ),
+        iconTheme: IconThemeData(color: Colors.white),
+        textTheme: TextTheme(
+          bodyLarge: TextStyle(color: Colors.white),
+          bodyMedium: TextStyle(color: Colors.white),
+          titleLarge: TextStyle(color: Colors.white),
+          titleMedium: TextStyle(color: Colors.white),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          border: OutlineInputBorder(
+            borderSide: BorderSide(color: Colors.grey.shade700),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: Colors.grey.shade700),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: Color(0xFF1F2E36)),
+          ),
+        ),
+      ),
       home: HomePage(),
       debugShowCheckedModeBanner: false,
       routes: {'/alarm_ring_page': (context) => AlarmExitPage()},

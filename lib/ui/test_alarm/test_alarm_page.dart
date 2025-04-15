@@ -44,7 +44,7 @@ class _TestAlarmPageState extends State<TestAlarmPage> {
       ),
     );
 
-    setTestAlarm();
+    // setTestAlarm();
   }
 
   void setTestAlarm() async {

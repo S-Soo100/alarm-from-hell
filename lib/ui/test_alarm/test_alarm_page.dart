@@ -40,7 +40,7 @@ class _TestAlarmPageState extends State<TestAlarmPage> {
         body: '알람 시간입니다! 확인해주세요.',
         stopButton: '알람 끄기',
         icon: 'notification_icon',
-        iconColor: Color(0xff862778),
+        iconColor: Color.fromARGB(255, 255, 0, 0), // 아이콘 컬러구나 ㅇㅋㅇㅋ
       ),
     );
 
@@ -69,6 +69,7 @@ class _TestAlarmPageState extends State<TestAlarmPage> {
   @override
   Widget build(BuildContext context) {
     return Material(
+      color: Colors.transparent,
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

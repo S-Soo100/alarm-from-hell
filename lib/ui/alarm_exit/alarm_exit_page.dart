@@ -1,10 +1,10 @@
 import 'package:alarm/alarm.dart';
-import 'package:alarm/model/alarm_settings.dart';
 import 'package:alarm_from_hell/core/utils/random_sentense.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class AlarmExitPage extends StatefulWidget {
-  const AlarmExitPage({Key? key}) : super(key: key);
+  const AlarmExitPage({super.key});
 
   @override
   State<AlarmExitPage> createState() => _AlarmExitPageState();
@@ -206,6 +206,25 @@ class _AlarmExitPageState extends State<AlarmExitPage>
                 ),
                 const SizedBox(height: 30),
                 if (_isTextCorrect)
+                  ElevatedButton(
+                    onPressed: () {
+                      // 알람 중지
+                      if (alarmSettings != null) {
+                        Alarm.stop(alarmSettings!.id);
+                      }
+                      // 페이지 닫기
+                      Navigator.of(context).pop();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 16,
+                      ),
+                    ),
+                    child: const Text('알람 끄기', style: TextStyle(fontSize: 20)),
+                  ),
+                if (kDebugMode)
                   ElevatedButton(
                     onPressed: () {
                       // 알람 중지

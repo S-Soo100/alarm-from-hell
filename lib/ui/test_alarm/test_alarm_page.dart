@@ -1,9 +1,6 @@
 import 'dart:io';
 
 import 'package:alarm/alarm.dart';
-import 'package:alarm/model/alarm_settings.dart';
-import 'package:alarm/model/notification_settings.dart';
-import 'package:alarm/model/volume_settings.dart';
 import 'package:alarm_from_hell/core/constants/sound_constants.dart';
 import 'package:alarm_from_hell/ui/alarm_exit/alarm_exit_page.dart';
 import 'package:flutter/material.dart';

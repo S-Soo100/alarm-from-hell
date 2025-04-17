@@ -2,14 +2,18 @@ import 'package:alarm_from_hell/component/alarm_list_widget.dart';
 import 'package:alarm_from_hell/component/next_alarm_time_widget.dart';
 import 'package:alarm_from_hell/data/model/AlarmModel.dart';
 import 'package:alarm_from_hell/domain/services/next_alarm_time_serivce.dart';
-import 'package:alarm_from_hell/ui/test_alarm/test_alarm_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/rendering.dart';
+import 'dart:io';
+import 'dart:async';
+import 'package:alarm_from_hell/core/constants/sound_constants.dart';
 
-// 메인에서 정의된 테마 프로바이더 가져오기
+// 메인에서 정의된 프로바이더와 서비스 가져오기
 import 'package:alarm_from_hell/main.dart';
+import 'package:alarm/model/alarm_settings.dart';
+import 'package:alarm/model/notification_settings.dart';
+import 'package:alarm/model/volume_settings.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -23,6 +27,12 @@ class _HomePageState extends State<HomePage> {
   NextAlarmTimeSerivce? _nextTimeService;
   String nextAlarm = "다음 알람이 없습니다";
 
+  // 알람 울림 리스너
+  StreamSubscription? _subscription;
+
+  // 이미 처리된 알람 ID 추적
+  final Set<int> _processedAlarmIds = {};
+
   // 알람 시간과 분을 위한 변수
   int _selectedHour = DateTime.now().hour;
   int _selectedMinute = DateTime.now().minute;
@@ -32,7 +42,7 @@ class _HomePageState extends State<HomePage> {
       id: 1,
       alarmTime: 23,
       alarmMinute: 0,
-      assetAudioPath: 'assets/alarm.mp3',
+      assetAudioPath: SoundConstants.testAlarmSound,
       loopAudio: true,
       vibrate: true,
       warningNotificationOnKill: true,
@@ -55,6 +65,143 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _nextTimeService = NextAlarmTimeSerivce();
     updateNextAlarmTime();
+
+    // 알람 리스너 서비스에 콜백 등록
+    alarmListenerService.onAlarmDeactivated = removeTriggeredAlarm;
+
+    // 알람 설정 전에 반드시 초기화
+    _initializeAlarm();
+  }
+
+  // 알람 초기화 메소드
+  Future<void> _initializeAlarm() async {
+    // 권한 체크는 필요 없음 (이미 main.dart에서 처리됨)
+
+    // 1. 가지고 있는 알람 목록 확인
+    print('======= 알람 시스템 초기화 =======');
+    print('1. 현재 알람 목록 확인');
+    print('등록된 알람 수: ${_alarmModel.length}');
+
+    // 처리된 알람 ID 초기화
+    _processedAlarmIds.clear();
+
+    // 기존 구독 취소
+    _subscription?.cancel();
+
+    // 알람 리스너는 main.dart에서 전역적으로 관리합니다.
+    // 중복 라우팅 방지를 위해 이 컴포넌트에서는 리스너를 설정하지 않습니다.
+
+    // 3. 기존 등록된 알람 정리
+    await _cleanupExistingAlarms();
+
+    // 4. 테스트 알람 생성
+    await _setTestAlarm();
+  }
+
+  // 알람이 울린 후 목록에서 제거하지 않고 비활성화로 변경
+  void removeTriggeredAlarm(int alarmId) {
+    setState(() {
+      int index = _alarmModel.indexWhere((alarm) => alarm.id == alarmId);
+      if (index != -1) {
+        // 알람을 제거하는 대신 비활성화 상태로 변경
+        _alarmModel[index].isActivated = false;
+        updateNextAlarmTime();
+        print('울린 알람(ID: $alarmId)이 비활성화되었습니다.');
+      }
+    });
+  }
+
+  // 기존 알람 정리
+  Future<void> _cleanupExistingAlarms() async {
+    // Alarm 패키지에 실제 등록된 알람 가져오기 시도
+    try {
+      // 모든 알람 중지 (새로 시작할 때 깔끔하게)
+      await alarmService.stopAllAlarms();
+      print('2. 기존 알람 모두 초기화 완료');
+
+      // AlarmModel 목록도 클리어
+      setState(() {
+        _alarmModel.clear();
+        updateNextAlarmTime();
+      });
+    } catch (e) {
+      print('기존 알람 정리 중 오류: $e');
+    }
+  }
+
+  // 테스트 알람 설정
+  Future<void> _setTestAlarm() async {
+    try {
+      // 현재 시간에서 30초 후로 설정
+      final now = DateTime.now();
+      final alarmTime = now.add(const Duration(seconds: 30));
+
+      print('3. 테스트 알람 설정');
+      print('현재 시간: $now');
+      print('알람 설정 시간: $alarmTime');
+
+      // 알람 ID는 Int 최대값(2147483647)보다 작아야 함
+      final alarmId = 12345;
+
+      final alarmSettings = AlarmSettings(
+        id: alarmId,
+        dateTime: alarmTime,
+        assetAudioPath: SoundConstants.testAlarmSound,
+        loopAudio: true,
+        vibrate: true,
+        warningNotificationOnKill: true,
+        androidFullScreenIntent: true,
+        volumeSettings: VolumeSettings.fade(
+          volume: Platform.isIOS ? 1.0 : 1.0,
+          fadeDuration: const Duration(seconds: 3),
+          volumeEnforced: true,
+        ),
+        notificationSettings: const NotificationSettings(
+          title: '테스트 알람',
+          body: '30초 후 울리는 테스트 알람입니다!',
+          stopButton: '알람 끄기',
+          icon: 'notification_icon',
+          iconColor: Color.fromARGB(255, 255, 0, 0),
+        ),
+      );
+
+      // 알람 설정
+      bool isSet = await alarmService.setAlarm(alarmSettings);
+
+      print('알람 설정 성공 여부: $isSet');
+      print('알람 ID: $alarmId');
+
+      // 4. 새 알람 모델 생성 및 UI에 추가
+      final newAlarm = AlarmModel(
+        id: alarmId,
+        alarmTime: alarmTime.hour,
+        alarmMinute: alarmTime.minute,
+        assetAudioPath: SoundConstants.testAlarmSound,
+        loopAudio: true,
+        vibrate: true,
+        warningNotificationOnKill: true,
+        androidFullScreenIntent: true,
+        volume: 1.0,
+        fadeDuration: const Duration(seconds: 3),
+        volumeEnforced: true,
+        title: '테스트 알람',
+        body: '30초 후 울리는 테스트 알람입니다!',
+        stopButton: '알람 끄기',
+        isActivated: isSet, // 알람 설정 성공 여부에 따라 활성화 상태 설정
+      );
+
+      // UI 업데이트
+      setState(() {
+        _alarmModel.add(newAlarm);
+        updateNextAlarmTime();
+      });
+
+      print('4. 알람 목록에 테스트 알람 추가 완료');
+      print('5. UI 업데이트 완료');
+      print('======= 알람 시스템 초기화 완료 =======');
+    } catch (e) {
+      print('테스트 알람 설정 중 오류 발생: $e');
+    }
   }
 
   // 테마 모드 변경
@@ -91,24 +238,54 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  // 알람 추가 메소드
-  void addAlarm(AlarmModel alarm) {
-    setState(() {
-      _alarmModel.add(alarm);
-      updateNextAlarmTime();
-    });
+  // 알람 추가 시 Alarm.set 적용
+  Future<void> addAlarm(AlarmModel alarm) async {
+    try {
+      // 알람 설정
+      bool isSet = await alarmService.setAlarmFromModel(alarm);
+
+      // 알람 활성화 상태 업데이트
+      alarm.isActivated = isSet;
+
+      // 알람 목록에 추가
+      setState(() {
+        _alarmModel.add(alarm);
+        updateNextAlarmTime();
+      });
+
+      print('알람(ID: ${alarm.id}) 추가 및 설정 완료: ${isSet ? '활성화' : '비활성화'}');
+    } catch (e) {
+      print('알람 추가 중 오류 발생: $e');
+    }
   }
 
   // 알람 삭제 메소드
-  void deleteAlarm(int index) {
-    setState(() {
-      _alarmModel.removeAt(index);
-      updateNextAlarmTime();
-    });
+  Future<void> deleteAlarm(int index) async {
+    try {
+      final alarmId = _alarmModel[index].id;
+
+      // 실제 알람 취소
+      await alarmService.stopAlarm(alarmId);
+
+      setState(() {
+        _alarmModel.removeAt(index);
+        updateNextAlarmTime();
+      });
+
+      print('알람(ID: $alarmId) 삭제 완료');
+    } catch (e) {
+      print('알람 삭제 중 오류 발생: $e');
+    }
   }
 
   @override
   void dispose() {
+    // 알람 리스너 서비스에서 콜백 제거
+    alarmListenerService.onAlarmDeactivated = null;
+
+    // 리소스 해제
+    _subscription?.cancel();
+    alarmService.stopAllAlarms(); // 모든 알람 중지
     _titleController.dispose();
     _bodyController.dispose();
     super.dispose();
@@ -261,7 +438,7 @@ class _HomePageState extends State<HomePage> {
                     alarms: _alarmModel,
                     onDeleteAlarm: deleteAlarm,
                   ),
-                  TestAlarmPage(),
+                  // TestAlarmPage(),
                 ],
               ),
             ),
@@ -387,13 +564,15 @@ class _HomePageState extends State<HomePage> {
                       child: Text("취소", style: TextStyle(color: Colors.white)),
                     ),
                     ElevatedButton(
-                      onPressed: () {
-                        // 알람 모델 생성 및 추가
+                      onPressed: () async {
+                        // 알람 모델 생성
+                        final newAlarmId =
+                            DateTime.now().millisecondsSinceEpoch;
                         final newAlarm = AlarmModel(
-                          id: DateTime.now().millisecondsSinceEpoch,
+                          id: newAlarmId,
                           alarmTime: _selectedHour,
                           alarmMinute: _selectedMinute,
-                          assetAudioPath: 'assets/alarm.mp3',
+                          assetAudioPath: SoundConstants.testAlarmSound,
                           loopAudio: true,
                           vibrate: true,
                           warningNotificationOnKill: true,
@@ -410,10 +589,11 @@ class _HomePageState extends State<HomePage> {
                                   ? "일어나세요!"
                                   : _bodyController.text,
                           stopButton: "중지",
+                          isActivated: false, // 초기 상태는 비활성화
                         );
 
                         // 알람 추가 및 모달 닫기
-                        addAlarm(newAlarm);
+                        await addAlarm(newAlarm);
                         setState(() {
                           _isModalOn = false;
                         });

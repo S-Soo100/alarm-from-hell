@@ -1,7 +1,9 @@
-import 'package:alarm/alarm.dart';
 import 'package:alarm_from_hell/core/utils/random_sentense.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:alarm_from_hell/ui/home_page.dart';
+import 'package:alarm/model/alarm_settings.dart';
+import 'package:alarm_from_hell/main.dart'; // 전역 서비스 접근용
 
 class AlarmExitPage extends StatefulWidget {
   const AlarmExitPage({super.key});
@@ -208,12 +210,24 @@ class _AlarmExitPageState extends State<AlarmExitPage>
                 if (_isTextCorrect)
                   ElevatedButton(
                     onPressed: () {
-                      // 알람 중지
+                      // 알람 중지 - 현재 알람만 중지
                       if (alarmSettings != null) {
-                        Alarm.stop(alarmSettings!.id);
+                        // 먼저 알람 중지
+                        alarmService.stopAlarm(alarmSettings!.id);
+                        print('알람이 성공적으로 중지되었습니다. ID: ${alarmSettings!.id}');
+
+                        // 알람 ID를 처리된 것으로 표시 (이 함수가 내부적으로 onAlarmDeactivated 콜백을 호출)
+                        alarmListenerService.markAlarmAsProcessed(
+                          alarmSettings!.id,
+                        );
+
+                        // 안전하게 알람이 중지되었으니 알람 스트림이 다시 발생하지 않도록
+                        // 모든 알람을 중지 (이중 호출 방지)
+                        alarmService.stopAllAlarms();
+
+                        // 홈 페이지로 돌아가기
+                        Navigator.of(context).pop();
                       }
-                      // 페이지 닫기
-                      Navigator.of(context).pop();
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
@@ -227,12 +241,30 @@ class _AlarmExitPageState extends State<AlarmExitPage>
                 if (kDebugMode)
                   ElevatedButton(
                     onPressed: () {
-                      // 알람 중지
+                      // 알람 중지 - 현재 알람만 중지
                       if (alarmSettings != null) {
-                        Alarm.stop(alarmSettings!.id);
+                        // 먼저 알람 중지
+                        alarmService.stopAlarm(alarmSettings!.id);
+                        print(
+                          '디버그 모드: 알람이 성공적으로 중지되었습니다. ID: ${alarmSettings!.id}',
+                        );
+
+                        // 알람 ID를 처리된 것으로 표시
+                        alarmListenerService.markAlarmAsProcessed(
+                          alarmSettings!.id,
+                        );
+
+                        // 안전하게 알람이 중지되었으니 알람 스트림이 다시 발생하지 않도록
+                        // 모든 알람을 중지 (이중 호출 방지)
+                        alarmService.stopAllAlarms();
                       }
-                      // 페이지 닫기
-                      Navigator.of(context).pop();
+
+                      // 페이지 닫기 - 약간 지연 처리
+                      Future.delayed(Duration(milliseconds: 500), () {
+                        if (mounted && Navigator.canPop(context)) {
+                          Navigator.of(context).pop();
+                        }
+                      });
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,

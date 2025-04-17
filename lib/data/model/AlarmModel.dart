@@ -21,6 +21,7 @@ class AlarmModel {
     required this.title,
     required this.body,
     required this.stopButton,
+    this.isActivated = false,
   });
   final int id;
   // final DateTime dateTime;
@@ -37,6 +38,46 @@ class AlarmModel {
   final String title;
   final String body;
   final String stopButton;
+  bool isActivated;
+
+  // 알람 모델 복사 메소드
+  AlarmModel copyWith({
+    int? id,
+    int? alarmTime,
+    int? alarmMinute,
+    String? assetAudioPath,
+    bool? loopAudio,
+    bool? vibrate,
+    bool? warningNotificationOnKill,
+    bool? androidFullScreenIntent,
+    double? volume,
+    Duration? fadeDuration,
+    bool? volumeEnforced,
+    String? title,
+    String? body,
+    String? stopButton,
+    bool? isActivated,
+  }) {
+    return AlarmModel(
+      id: id ?? this.id,
+      alarmTime: alarmTime ?? this.alarmTime,
+      alarmMinute: alarmMinute ?? this.alarmMinute,
+      assetAudioPath: assetAudioPath ?? this.assetAudioPath,
+      loopAudio: loopAudio ?? this.loopAudio,
+      vibrate: vibrate ?? this.vibrate,
+      warningNotificationOnKill:
+          warningNotificationOnKill ?? this.warningNotificationOnKill,
+      androidFullScreenIntent:
+          androidFullScreenIntent ?? this.androidFullScreenIntent,
+      volume: volume ?? this.volume,
+      fadeDuration: fadeDuration ?? this.fadeDuration,
+      volumeEnforced: volumeEnforced ?? this.volumeEnforced,
+      title: title ?? this.title,
+      body: body ?? this.body,
+      stopButton: stopButton ?? this.stopButton,
+      isActivated: isActivated ?? this.isActivated,
+    );
+  }
 
   DateTime get myDateTime {
     DateTime now = DateTime.now();

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:alarm/alarm.dart';
@@ -15,8 +16,10 @@ class TestAlarmPage extends StatefulWidget {
 class _TestAlarmPageState extends State<TestAlarmPage> {
   DateTime time = DateTime.now();
   AlarmSettings? myAlarmSettings;
-
   int alarmId = 0;
+
+  // 알람 울림 리스너
+  StreamSubscription? _subscription;
 
   @override
   void initState() {
@@ -44,7 +47,17 @@ class _TestAlarmPageState extends State<TestAlarmPage> {
       ),
     );
 
+    // 알람 리스너는 main.dart에서 전역적으로 관리합니다.
+    // 중복 라우팅 방지를 위해 이 컴포넌트에서는 리스너를 설정하지 않습니다.
+
     // setTestAlarm();
+  }
+
+  @override
+  void dispose() {
+    // 리스너 해제
+    _subscription?.cancel();
+    super.dispose();
   }
 
   void setTestAlarm() async {

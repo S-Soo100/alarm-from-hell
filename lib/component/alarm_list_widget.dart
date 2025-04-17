@@ -180,12 +180,15 @@ class AlarmItem extends StatelessWidget {
             height: 40,
             width: 40,
             decoration: BoxDecoration(
-              color: Color(0xFF34C759).withAlpha(isDark ? 70 : 51),
+              color:
+                  alarm.isActivated
+                      ? Color(0xFF34C759).withAlpha(isDark ? 70 : 51)
+                      : Colors.grey.withAlpha(isDark ? 70 : 51),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Icon(
               CupertinoIcons.alarm,
-              color: Color(0xFF34C759),
+              color: alarm.isActivated ? Color(0xFF34C759) : Colors.grey,
               size: 20,
             ),
           ),
@@ -208,7 +211,7 @@ class AlarmItem extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
-                    color: Color(0xFF34C759),
+                    color: alarm.isActivated ? Color(0xFF34C759) : Colors.grey,
                   ),
                 ),
                 SizedBox(height: 2),

@@ -1,4 +1,6 @@
 import 'package:alarm/alarm.dart';
+import 'package:alarm_from_hell/domain/services/alarm_listener_service.dart';
+import 'package:alarm_from_hell/domain/services/alarm_service.dart';
 import 'package:alarm_from_hell/ui/alarm_exit/alarm_exit_page.dart';
 import 'package:alarm_from_hell/ui/home_page.dart';
 import 'package:flutter/material.dart';
@@ -8,8 +10,18 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:alarm_from_hell/core/constants/storage_constants.dart';
 import 'package:alarm_from_hell/core/constants/theme_constants.dart';
 
+// 서비스 export - 모든 파일에서 동일한 인스턴스 접근을 위해
+export 'package:alarm_from_hell/domain/services/alarm_listener_service.dart';
+export 'package:alarm_from_hell/domain/services/alarm_service.dart';
+
 // 전역 내비게이터 키
 final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+
+// 전역 알람 리스너 서비스
+final alarmListenerService = AlarmListenerService();
+
+// 전역 알람 서비스
+final alarmService = AlarmService();
 
 // 전역 테마 상태 관리
 class ThemeProvider extends ChangeNotifier {
@@ -54,10 +66,10 @@ void main() async {
   await Hive.initFlutter();
 
   // 알람 초기화
-  await Alarm.init();
+  await alarmService.init();
 
-  // 알람 링잉 핸들러 설정
-  setupAlarmHandlers();
+  // 알람 링잉 핸들러 설정 (알람 리스너 서비스 초기화)
+  alarmListenerService.initialize(_navigatorKey);
 
   // 알림 권한 요청 (Android 및 iOS 모두)
   await requestNotificationPermissions();
@@ -66,31 +78,6 @@ void main() async {
   await themeProvider.loadThemeFromHive();
 
   runApp(const MyApp());
-}
-
-// 알람 핸들러 설정
-void setupAlarmHandlers() {
-  // 알람이 울릴 때 호출되는 콜백
-  Alarm.ringing.listen((alarmSet) {
-    if (alarmSet.alarms.isEmpty) {
-      print('알람이 울렸지만 알람 목록이 비어 있습니다.');
-      return;
-    }
-
-    print('알람이 울립니다! ID: ${alarmSet.alarms.first.id}');
-
-    // 알람이 울리면 특정 페이지로 이동
-    // 메인 스레드에서 실행해야 UI 업데이트가 가능합니다
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_navigatorKey.currentState != null) {
-        // 여기서 원하는 페이지로 이동합니다
-        _navigatorKey.currentState!.pushNamed(
-          '/alarm_exit_page',
-          arguments: alarmSet.alarms.first,
-        );
-      }
-    });
-  });
 }
 
 Future<void> requestNotificationPermissions() async {
@@ -125,6 +112,13 @@ class _MyAppState extends State<MyApp> {
     themeProvider.addListener(() {
       setState(() {});
     });
+  }
+
+  @override
+  void dispose() {
+    // 앱 종료 시 알람 리스너 서비스 정리
+    alarmListenerService.dispose();
+    super.dispose();
   }
 
   // This widget is the root of your application.

@@ -217,9 +217,7 @@ class _AlarmExitPageState extends State<AlarmExitPage>
                         print('알람이 성공적으로 중지되었습니다. ID: ${alarmSettings!.id}');
 
                         // 알람 ID를 처리된 것으로 표시 (이 함수가 내부적으로 onAlarmDeactivated 콜백을 호출)
-                        alarmListenerService.markAlarmAsProcessed(
-                          alarmSettings!.id,
-                        );
+                        alarmService.markAlarmAsProcessed(alarmSettings!.id);
 
                         // 안전하게 알람이 중지되었으니 알람 스트림이 다시 발생하지 않도록
                         // 모든 알람을 중지 (이중 호출 방지)
@@ -250,9 +248,7 @@ class _AlarmExitPageState extends State<AlarmExitPage>
                         );
 
                         // 알람 ID를 처리된 것으로 표시
-                        alarmListenerService.markAlarmAsProcessed(
-                          alarmSettings!.id,
-                        );
+                        alarmService.markAlarmAsProcessed(alarmSettings!.id);
 
                         // 안전하게 알람이 중지되었으니 알람 스트림이 다시 발생하지 않도록
                         // 모든 알람을 중지 (이중 호출 방지)

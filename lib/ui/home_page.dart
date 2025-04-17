@@ -66,8 +66,8 @@ class _HomePageState extends State<HomePage> {
     _nextTimeService = NextAlarmTimeSerivce();
     updateNextAlarmTime();
 
-    // 알람 리스너 서비스에 콜백 등록
-    alarmListenerService.onAlarmDeactivated = removeTriggeredAlarm;
+    // 알람 서비스에 콜백 등록
+    alarmService.onAlarmDeactivated = removeTriggeredAlarm;
 
     // 알람 설정 전에 반드시 초기화
     _initializeAlarm();
@@ -280,8 +280,8 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
-    // 알람 리스너 서비스에서 콜백 제거
-    alarmListenerService.onAlarmDeactivated = null;
+    // 알람 서비스에서 콜백 제거
+    alarmService.onAlarmDeactivated = null;
 
     // 리소스 해제
     _subscription?.cancel();

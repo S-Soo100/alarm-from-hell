@@ -3,11 +3,10 @@ import 'package:alarm_from_hell/ui/alarm_exit/alarm_exit_page.dart';
 import 'package:alarm_from_hell/ui/home_page.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
-// import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:alarm_from_hell/core/constants/storage_constants.dart';
+import 'package:alarm_from_hell/core/constants/theme_constants.dart';
 
 // 전역 내비게이터 키
 final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
@@ -72,8 +71,13 @@ void main() async {
 // 알람 핸들러 설정
 void setupAlarmHandlers() {
   // 알람이 울릴 때 호출되는 콜백
-  Alarm.ringStream.stream.listen((alarmSettings) {
-    print('알람이 울립니다! ID: ${alarmSettings.id}');
+  Alarm.ringing.listen((alarmSet) {
+    if (alarmSet.alarms.isEmpty) {
+      print('알람이 울렸지만 알람 목록이 비어 있습니다.');
+      return;
+    }
+
+    print('알람이 울립니다! ID: ${alarmSet.alarms.first.id}');
 
     // 알람이 울리면 특정 페이지로 이동
     // 메인 스레드에서 실행해야 UI 업데이트가 가능합니다
@@ -81,8 +85,8 @@ void setupAlarmHandlers() {
       if (_navigatorKey.currentState != null) {
         // 여기서 원하는 페이지로 이동합니다
         _navigatorKey.currentState!.pushNamed(
-          '/alarm_ring_page',
-          arguments: alarmSettings,
+          '/alarm_exit_page',
+          arguments: alarmSet.alarms.first,
         );
       }
     });
@@ -130,75 +134,11 @@ class _MyAppState extends State<MyApp> {
       title: 'Alarm From Hell',
       navigatorKey: _navigatorKey, // 전역 내비게이터 키 설정
       themeMode: themeProvider.themeMode,
-      theme: ThemeData.light().copyWith(
-        primaryColor: Color(0xFF1F2E36),
-        scaffoldBackgroundColor: Colors.white,
-        appBarTheme: AppBarTheme(
-          backgroundColor: Color(0xFF1F2E36),
-          elevation: 0,
-          iconTheme: IconThemeData(color: Colors.white),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Color(0xFF1F2E36),
-            foregroundColor: Colors.white,
-          ),
-        ),
-        iconTheme: IconThemeData(color: Colors.black87),
-        textTheme: TextTheme(
-          bodyLarge: TextStyle(color: Colors.black87),
-          bodyMedium: TextStyle(color: Colors.black87),
-          titleLarge: TextStyle(color: Colors.black87),
-          titleMedium: TextStyle(color: Colors.black87),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          border: OutlineInputBorder(
-            borderSide: BorderSide(color: Colors.grey.shade400),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: Colors.grey.shade400),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: Color(0xFF1F2E36)),
-          ),
-        ),
-      ),
-      darkTheme: ThemeData.dark().copyWith(
-        primaryColor: Color(0xFF1F2E36),
-        scaffoldBackgroundColor: Color(0xFF121212),
-        appBarTheme: AppBarTheme(
-          backgroundColor: Color(0xFF1F2E36),
-          elevation: 0,
-          iconTheme: IconThemeData(color: Colors.white),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Color(0xFF1F2E36),
-            foregroundColor: Colors.white,
-          ),
-        ),
-        iconTheme: IconThemeData(color: Colors.white),
-        textTheme: TextTheme(
-          bodyLarge: TextStyle(color: Colors.white),
-          bodyMedium: TextStyle(color: Colors.white),
-          titleLarge: TextStyle(color: Colors.white),
-          titleMedium: TextStyle(color: Colors.white),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          border: OutlineInputBorder(
-            borderSide: BorderSide(color: Colors.grey.shade700),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: Colors.grey.shade700),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: Color(0xFF1F2E36)),
-          ),
-        ),
-      ),
+      theme: ThemeConstants.lightTheme,
+      darkTheme: ThemeConstants.darkTheme,
       home: HomePage(),
       debugShowCheckedModeBanner: false,
-      routes: {'/alarm_ring_page': (context) => AlarmExitPage()},
+      routes: {'/alarm_exit_page': (context) => AlarmExitPage()},
     );
   }
 }

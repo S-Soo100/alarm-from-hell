@@ -27,9 +27,6 @@ class _HomePageState extends State<HomePage> {
   int _selectedHour = DateTime.now().hour;
   int _selectedMinute = DateTime.now().minute;
 
-  // 테마 모드 상태
-  bool _isDarkMode = true;
-
   final List<AlarmModel> _alarmModel = [
     AlarmModel(
       id: 1,
@@ -52,7 +49,6 @@ class _HomePageState extends State<HomePage> {
   // 알람 입력을 위한 컨트롤러들
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _bodyController = TextEditingController();
-  DateTime _selectedDateTime = DateTime.now();
 
   @override
   void initState() {

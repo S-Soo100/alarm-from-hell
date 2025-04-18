@@ -121,13 +121,13 @@ class AlarmListWidget extends StatelessWidget {
                             );
                           },
                           onDismissed: (direction) {
-                            onDeleteAlarm(index);
+                            onDeleteAlarm(alarm.id);
                           },
                           child: Column(
                             children: [
                               AlarmItem(
                                 alarm: alarm,
-                                onDelete: () => onDeleteAlarm(index),
+                                onDelete: () => onDeleteAlarm(alarm.id),
                                 isDark: isDark,
                               ),
                               if (index < alarms.length - 1)

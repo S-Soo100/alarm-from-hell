@@ -1,4 +1,6 @@
 import 'package:alarm/alarm.dart';
+import 'package:alarm_from_hell/data/model/AlarmModel.dart';
+import 'package:alarm_from_hell/data/service/alarm_db_service.dart';
 import 'package:alarm_from_hell/domain/services/alarm_service.dart';
 import 'package:alarm_from_hell/ui/alarm_exit/alarm_exit_page.dart';
 import 'package:alarm_from_hell/ui/home_page.dart';
@@ -8,9 +10,11 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:alarm_from_hell/core/constants/storage_constants.dart';
 import 'package:alarm_from_hell/core/constants/theme_constants.dart';
+import 'package:alarm_from_hell/core/utils/theme_provider.dart';
 
 // 서비스 export - 모든 파일에서 동일한 인스턴스 접근을 위해
 export 'package:alarm_from_hell/domain/services/alarm_service.dart';
+export 'package:alarm_from_hell/data/service/alarm_db_service.dart';
 
 // 전역 내비게이터 키
 final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
@@ -18,47 +22,56 @@ final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 // 전역 알람 서비스
 final alarmService = AlarmService();
 
+// 전역 알람 DB 서비스
+final alarmDBService = AlarmDBService();
+
 // 전역 테마 상태 관리
-class ThemeProvider extends ChangeNotifier {
-  ThemeMode _themeMode = ThemeMode.dark;
+// ThemeProvider 클래스는 core/utils/theme_provider.dart로 이동됨
 
-  ThemeMode get themeMode => _themeMode;
+/// Hive 어댑터 등록
+void registerHiveAdapters() {
+  print('-------------- Hive 어댑터 등록 시작 --------------');
 
-  bool get isDarkMode => _themeMode == ThemeMode.dark;
-
-  // Hive에서 테마 설정 로드
-  Future<void> loadThemeFromHive() async {
-    final box = await Hive.openBox(StorageConstants.themeBoxName);
-    final isDark =
-        box.get(StorageConstants.isDarkModeKey, defaultValue: true) as bool;
-    setDarkMode(isDark);
+  try {
+    // AlarmModel 어댑터 등록
+    if (!Hive.isAdapterRegistered(0)) {
+      print('AlarmModel 어댑터 등록 (typeId: 0)');
+      Hive.registerAdapter(AlarmModelAdapter());
+      print('AlarmModel 어댑터 등록 완료');
+    } else {
+      print('AlarmModel 어댑터 이미 등록됨 (typeId: 0)');
+    }
+  } catch (e) {
+    print('⚠️ Hive 어댑터 등록 오류: $e');
   }
 
-  // Hive에 테마 설정 저장
-  Future<void> saveThemeToHive(bool isDark) async {
-    final box = await Hive.openBox(StorageConstants.themeBoxName);
-    await box.put(StorageConstants.isDarkModeKey, isDark);
-  }
-
-  void toggleTheme() {
-    _themeMode = isDarkMode ? ThemeMode.light : ThemeMode.dark;
-    saveThemeToHive(!isDarkMode);
-    notifyListeners();
-  }
-
-  void setDarkMode(bool isDark) {
-    _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
-    notifyListeners();
-  }
+  print('-------------- Hive 어댑터 등록 완료 --------------');
 }
-
-final themeProvider = ThemeProvider();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Hive 초기화
   await Hive.initFlutter();
+
+  // 개발 중 디버그 모드에서만 사용하던 Hive 데이터 삭제 코드 제거
+  // 사용자 알람 데이터가 앱 재시작 후에도 유지되도록 함
+  /*
+  try {
+    print('-------------- Hive 청소 시작 --------------');
+    await Hive.deleteBoxFromDisk('alarms_box');
+    print('알람 박스 삭제 완료');
+    print('-------------- Hive 청소 완료 --------------');
+  } catch (e) {
+    print('Hive 박스 삭제 실패: $e');
+  }
+  */
+
+  // Hive 어댑터 등록
+  registerHiveAdapters();
+
+  // 알람 DB 서비스 초기화
+  await alarmDBService.init();
 
   // 알람 서비스 초기화 (알람 초기화 + 리스너 설정)
   await alarmService.initialize(_navigatorKey);

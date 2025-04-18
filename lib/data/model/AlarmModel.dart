@@ -3,7 +3,11 @@ import 'package:alarm/model/alarm_settings.dart';
 import 'package:alarm/model/notification_settings.dart';
 import 'package:alarm/model/volume_settings.dart';
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 
+part 'AlarmModel.g.dart';
+
+@HiveType(typeId: 0)
 class AlarmModel {
   AlarmModel({
     required this.id,
@@ -16,29 +20,63 @@ class AlarmModel {
     required this.warningNotificationOnKill,
     required this.androidFullScreenIntent,
     required this.volume,
-    required this.fadeDuration,
+    required Duration fadeDuration,
     required this.volumeEnforced,
     required this.title,
     required this.body,
     required this.stopButton,
     this.isActivated = false,
-  });
+  }) : fadeDurationMillis = fadeDuration.inMilliseconds;
+
+  @HiveField(0)
   final int id;
+
   // final DateTime dateTime;
+  @HiveField(1)
   final int alarmTime;
+
+  @HiveField(2)
   final int alarmMinute;
+
+  @HiveField(3)
   final String assetAudioPath;
+
+  @HiveField(4)
   final bool loopAudio;
+
+  @HiveField(5)
   final bool vibrate;
+
+  @HiveField(6)
   final bool warningNotificationOnKill;
+
+  @HiveField(7)
   final bool androidFullScreenIntent;
+
+  @HiveField(8)
   final double volume;
-  final Duration fadeDuration;
+
+  // Duration을 직접 사용하지 않고 밀리초로 변환하여 저장
+  @HiveField(9)
+  final int fadeDurationMillis;
+
+  @HiveField(10)
   final bool volumeEnforced;
+
+  @HiveField(11)
   final String title;
+
+  @HiveField(12)
   final String body;
+
+  @HiveField(13)
   final String stopButton;
+
+  @HiveField(14)
   bool isActivated;
+
+  // 밀리초를 Duration으로 변환
+  Duration get fadeDuration => Duration(milliseconds: fadeDurationMillis);
 
   // 알람 모델 복사 메소드
   AlarmModel copyWith({
@@ -108,7 +146,7 @@ class AlarmModel {
       androidFullScreenIntent: androidFullScreenIntent,
       volumeSettings: VolumeSettings.fade(
         volume: volume,
-        fadeDuration: fadeDuration,
+        fadeDuration: fadeDuration, // getter를 통해 얻은 Duration 사용
         volumeEnforced: volumeEnforced,
       ),
       notificationSettings: NotificationSettings(

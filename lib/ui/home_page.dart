@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'dart:io';
 import 'dart:async';
 import 'package:alarm_from_hell/core/constants/sound_constants.dart';
+import 'package:alarm_from_hell/core/utils/theme_provider.dart';
 
 // 메인에서 정의된 프로바이더와 서비스 가져오기
 import 'package:alarm_from_hell/main.dart';
@@ -37,25 +38,6 @@ class _HomePageState extends State<HomePage> {
   int _selectedHour = DateTime.now().hour;
   int _selectedMinute = DateTime.now().minute;
 
-  final List<AlarmModel> _alarmModel = [
-    AlarmModel(
-      id: 1,
-      alarmTime: 23,
-      alarmMinute: 0,
-      assetAudioPath: SoundConstants.testAlarmSound,
-      loopAudio: true,
-      vibrate: true,
-      warningNotificationOnKill: true,
-      androidFullScreenIntent: true,
-      volume: 0.2,
-      fadeDuration: Duration(seconds: 5),
-      volumeEnforced: true,
-      title: '테스트 타이틀',
-      body: '테스트 바디',
-      stopButton: '테스트 스탑 버튼',
-    ),
-  ];
-
   // 알람 입력을 위한 컨트롤러들
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _bodyController = TextEditingController();
@@ -80,7 +62,8 @@ class _HomePageState extends State<HomePage> {
     // 1. 가지고 있는 알람 목록 확인
     print('======= 알람 시스템 초기화 =======');
     print('1. 현재 알람 목록 확인');
-    print('등록된 알람 수: ${_alarmModel.length}');
+    final alarms = alarmDBService.getAllAlarms();
+    print('등록된 알람 수: ${alarms.length}');
 
     // 처리된 알람 ID 초기화
     _processedAlarmIds.clear();
@@ -94,38 +77,61 @@ class _HomePageState extends State<HomePage> {
     // 3. 기존 등록된 알람 정리
     await _cleanupExistingAlarms();
 
-    // 4. 테스트 알람 생성
-    await _setTestAlarm();
+    // 4. 테스트 알람은 앱을 처음 설치했을 때만 생성
+    if (alarms.isEmpty) {
+      await _setTestAlarm();
+    } else {
+      print('3. 기존 알람이 있으므로 테스트 알람은 생성하지 않습니다.');
+      print('======= 알람 시스템 초기화 완료 =======');
+    }
   }
 
   // 알람이 울린 후 목록에서 제거하지 않고 비활성화로 변경
   void removeTriggeredAlarm(int alarmId) {
-    setState(() {
-      int index = _alarmModel.indexWhere((alarm) => alarm.id == alarmId);
-      if (index != -1) {
-        // 알람을 제거하는 대신 비활성화 상태로 변경
-        _alarmModel[index].isActivated = false;
-        updateNextAlarmTime();
-        print('울린 알람(ID: $alarmId)이 비활성화되었습니다.');
-      }
-    });
+    // Hive에서 알람의 활성화 상태 업데이트
+    alarmDBService.updateAlarmActivation(alarmId, false);
+    updateNextAlarmTime();
+    print('울린 알람(ID: $alarmId)이 비활성화되었습니다.');
   }
 
   // 기존 알람 정리
   Future<void> _cleanupExistingAlarms() async {
-    // Alarm 패키지에 실제 등록된 알람 가져오기 시도
     try {
-      // 모든 알람 중지 (새로 시작할 때 깔끔하게)
-      await alarmService.stopAllAlarms();
-      print('2. 기존 알람 모두 초기화 완료');
+      // 알람 서비스에 등록된 알람 유지 (알람 중지 코드 제거)
+      // await alarmService.stopAllAlarms();
+      print('2. 기존 알람 서비스의 알람을 유지합니다');
 
-      // AlarmModel 목록도 클리어
-      setState(() {
-        _alarmModel.clear();
-        updateNextAlarmTime();
-      });
+      // 기존 DB에 저장된 알람을 확인하고 필요 시 재활성화
+      final savedAlarms = alarmDBService.getAllAlarms();
+      for (var alarm in savedAlarms) {
+        if (alarm.isActivated) {
+          // 현재 시간과 비교해서 이미 지난 알람은 비활성화
+          final now = DateTime.now();
+          DateTime alarmDateTime = DateTime(
+            now.year,
+            now.month,
+            now.day,
+            alarm.alarmTime,
+            alarm.alarmMinute,
+          );
+
+          // 알람이 현재 시간보다 이전이면 다음 날로 조정
+          if (alarmDateTime.isBefore(now)) {
+            alarmDateTime = alarmDateTime.add(const Duration(days: 1));
+
+            // 알람 재설정
+            await alarmService.setAlarmFromModel(alarm);
+            print('지난 알람(ID: ${alarm.id})을 다음 날로 재설정 완료');
+          } else {
+            // 이미 설정된 알람은 그대로 유지
+            print('기존 알람(ID: ${alarm.id})은 이미 설정되어 있습니다');
+          }
+        }
+      }
+
+      updateNextAlarmTime();
     } catch (e) {
-      print('기존 알람 정리 중 오류: $e');
+      print('기존 알람 처리 중 오류: $e');
     }
   }
 
@@ -172,31 +178,33 @@ class _HomePageState extends State<HomePage> {
       print('알람 ID: $alarmId');
 
       // 4. 새 알람 모델 생성 및 UI에 추가
-      final newAlarm = AlarmModel(
-        id: alarmId,
-        alarmTime: alarmTime.hour,
-        alarmMinute: alarmTime.minute,
-        assetAudioPath: SoundConstants.testAlarmSound,
-        loopAudio: true,
-        vibrate: true,
-        warningNotificationOnKill: true,
-        androidFullScreenIntent: true,
-        volume: 1.0,
-        fadeDuration: const Duration(seconds: 3),
-        volumeEnforced: true,
-        title: '테스트 알람',
-        body: '30초 후 울리는 테스트 알람입니다!',
-        stopButton: '알람 끄기',
-        isActivated: isSet, // 알람 설정 성공 여부에 따라 활성화 상태 설정
-      );
+      try {
+        final newAlarm = AlarmModel(
+          id: alarmId,
+          alarmTime: alarmTime.hour,
+          alarmMinute: alarmTime.minute,
+          assetAudioPath: SoundConstants.testAlarmSound,
+          loopAudio: true,
+          vibrate: true,
+          warningNotificationOnKill: true,
+          androidFullScreenIntent: true,
+          volume: 1.0,
+          fadeDuration: const Duration(seconds: 3),
+          volumeEnforced: true,
+          title: '테스트 알람',
+          body: '30초 후 울리는 테스트 알람입니다!',
+          stopButton: '알람 끄기',
+          isActivated: isSet, // 알람 설정 성공 여부에 따라 활성화 상태 설정
+        );
 
-      // UI 업데이트
-      setState(() {
-        _alarmModel.add(newAlarm);
-        updateNextAlarmTime();
-      });
+        // Hive DB에 알람 추가
+        await alarmDBService.addAlarm(newAlarm);
+        print('4. 알람 DB에 테스트 알람 추가 완료');
+      } catch (e) {
+        print('알람 모델 생성 또는 저장 중 오류: $e');
+      }
 
-      print('4. 알람 목록에 테스트 알람 추가 완료');
+      updateNextAlarmTime();
       print('5. UI 업데이트 완료');
       print('======= 알람 시스템 초기화 완료 =======');
     } catch (e) {
@@ -233,25 +241,62 @@ class _HomePageState extends State<HomePage> {
 
   // 다음 알람 시간 업데이트 메소드
   void updateNextAlarmTime() {
+    final alarms = alarmDBService.getAllAlarms();
     setState(() {
-      nextAlarm = _nextTimeService!.getNextAlarmTimeWithAlarms(_alarmModel);
+      nextAlarm = _nextTimeService!.getNextAlarmTimeWithAlarms(alarms);
     });
   }
 
   // 알람 추가 시 Alarm.set 적용
   Future<void> addAlarm(AlarmModel alarm) async {
     try {
+      // DateTime 계산
+      final now = DateTime.now();
+      DateTime alarmDateTime = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        alarm.alarmTime,
+        alarm.alarmMinute,
+      );
+
+      // 선택한 시간이 현재 시간보다 이전이면 다음 날로 설정
+      if (alarmDateTime.isBefore(now)) {
+        alarmDateTime = alarmDateTime.add(const Duration(days: 1));
+      }
+
+      // AlarmSettings 생성
+      final alarmSettings = AlarmSettings(
+        id: alarm.id,
+        dateTime: alarmDateTime,
+        assetAudioPath: alarm.assetAudioPath,
+        loopAudio: alarm.loopAudio,
+        vibrate: alarm.vibrate,
+        warningNotificationOnKill: alarm.warningNotificationOnKill,
+        androidFullScreenIntent: alarm.androidFullScreenIntent,
+        volumeSettings: VolumeSettings.fade(
+          volume: alarm.volume,
+          fadeDuration: alarm.fadeDuration,
+          volumeEnforced: alarm.volumeEnforced,
+        ),
+        notificationSettings: NotificationSettings(
+          title: alarm.title,
+          body: alarm.body,
+          stopButton: alarm.stopButton,
+          icon: 'notification_icon',
+          iconColor: const Color.fromARGB(255, 255, 0, 0),
+        ),
+      );
+
       // 알람 설정
-      bool isSet = await alarmService.setAlarmFromModel(alarm);
+      bool isSet = await alarmService.setAlarm(alarmSettings);
 
       // 알람 활성화 상태 업데이트
       alarm.isActivated = isSet;
 
-      // 알람 목록에 추가
-      setState(() {
-        _alarmModel.add(alarm);
-        updateNextAlarmTime();
-      });
+      // Hive DB에 알람 추가
+      await alarmDBService.addAlarm(alarm);
+      updateNextAlarmTime();
 
       print('알람(ID: ${alarm.id}) 추가 및 설정 완료: ${isSet ? '활성화' : '비활성화'}');
     } catch (e) {
@@ -260,19 +305,16 @@ class _HomePageState extends State<HomePage> {
   }
 
   // 알람 삭제 메소드
-  Future<void> deleteAlarm(int index) async {
+  Future<void> deleteAlarm(int id) async {
     try {
-      final alarmId = _alarmModel[index].id;
-
       // 실제 알람 취소
-      await alarmService.stopAlarm(alarmId);
+      await alarmService.stopAlarm(id);
 
-      setState(() {
-        _alarmModel.removeAt(index);
-        updateNextAlarmTime();
-      });
+      // Hive DB에서 알람 삭제
+      await alarmDBService.deleteAlarm(id);
+      updateNextAlarmTime();
 
-      print('알람(ID: $alarmId) 삭제 완료');
+      print('알람(ID: $id) 삭제 완료');
     } catch (e) {
       print('알람 삭제 중 오류 발생: $e');
     }
@@ -434,11 +476,17 @@ class _HomePageState extends State<HomePage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   NextAlarmTimeWidget(nextAlarmTime: nextAlarm),
-                  AlarmListWidget(
-                    alarms: _alarmModel,
-                    onDeleteAlarm: deleteAlarm,
+                  // ValueListenableBuilder로 알람 목록 표시
+                  ValueListenableBuilder(
+                    valueListenable: alarmDBService.alarmsListenable,
+                    builder: (context, box, _) {
+                      final alarms = box.values.toList();
+                      return AlarmListWidget(
+                        alarms: alarms,
+                        onDeleteAlarm: deleteAlarm,
+                      );
+                    },
                   ),
-                  // TestAlarmPage(),
                 ],
               ),
             ),
@@ -567,33 +615,40 @@ class _HomePageState extends State<HomePage> {
                       onPressed: () async {
                         // 알람 모델 생성
                         final newAlarmId =
-                            DateTime.now().millisecondsSinceEpoch;
-                        final newAlarm = AlarmModel(
-                          id: newAlarmId,
-                          alarmTime: _selectedHour,
-                          alarmMinute: _selectedMinute,
-                          assetAudioPath: SoundConstants.testAlarmSound,
-                          loopAudio: true,
-                          vibrate: true,
-                          warningNotificationOnKill: true,
-                          androidFullScreenIntent: true,
-                          volume: 1.0,
-                          fadeDuration: Duration(seconds: 3),
-                          volumeEnforced: true,
-                          title:
-                              _titleController.text.isEmpty
-                                  ? "알람"
-                                  : _titleController.text,
-                          body:
-                              _bodyController.text.isEmpty
-                                  ? "일어나세요!"
-                                  : _bodyController.text,
-                          stopButton: "중지",
-                          isActivated: false, // 초기 상태는 비활성화
-                        );
+                            DateTime.now().second * 1000 +
+                            DateTime.now().millisecond;
+                        try {
+                          final newAlarm = AlarmModel(
+                            id: newAlarmId,
+                            alarmTime: _selectedHour,
+                            alarmMinute: _selectedMinute,
+                            assetAudioPath: SoundConstants.testAlarmSound,
+                            loopAudio: true,
+                            vibrate: true,
+                            warningNotificationOnKill: true,
+                            androidFullScreenIntent: true,
+                            volume: 1.0,
+                            fadeDuration: const Duration(seconds: 3),
+                            volumeEnforced: true,
+                            title:
+                                _titleController.text.isEmpty
+                                    ? "알람"
+                                    : _titleController.text,
+                            body:
+                                _bodyController.text.isEmpty
+                                    ? "일어나세요!"
+                                    : _bodyController.text,
+                            stopButton: "중지",
+                            isActivated: false, // 초기 상태는 비활성화
+                          );
 
-                        // 알람 추가 및 모달 닫기
-                        await addAlarm(newAlarm);
+                          // 알람 추가 및 모달 닫기
+                          await addAlarm(newAlarm);
+                          print('새 알람 추가 성공: ${newAlarm.id}');
+                        } catch (e) {
+                          print('새 알람 생성 오류: $e');
+                        }
+
                         setState(() {
                           _isModalOn = false;
                         });

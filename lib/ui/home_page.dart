@@ -434,6 +434,9 @@ class _HomePageState extends State<HomePage> {
           onSelected: (value) {
             if (value == 'toggle_theme') {
               _toggleThemeMode();
+            } else if (value == 'test_notification') {
+              // 테스트 알림 표시
+              notificationService.showTestNotification();
             }
           },
           itemBuilder:
@@ -448,6 +451,16 @@ class _HomePageState extends State<HomePage> {
                       ),
                       SizedBox(width: 8),
                       Text(isDark ? '라이트 모드로 전환' : '다크 모드로 전환'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem<String>(
+                  value: 'test_notification',
+                  child: Row(
+                    children: [
+                      Icon(Icons.notifications, color: theme.iconTheme.color),
+                      SizedBox(width: 8),
+                      Text('테스트 알림 표시'),
                     ],
                   ),
                 ),

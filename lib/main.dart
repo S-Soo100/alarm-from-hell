@@ -2,6 +2,7 @@ import 'package:alarm/alarm.dart';
 import 'package:alarm_from_hell/data/model/AlarmModel.dart';
 import 'package:alarm_from_hell/data/service/alarm_db_service.dart';
 import 'package:alarm_from_hell/domain/services/alarm_service.dart';
+import 'package:alarm_from_hell/domain/services/notification_service.dart';
 import 'package:alarm_from_hell/ui/alarm_exit/alarm_exit_page.dart';
 import 'package:alarm_from_hell/ui/home_page.dart';
 import 'package:flutter/material.dart';
@@ -15,6 +16,7 @@ import 'package:alarm_from_hell/core/utils/theme_provider.dart';
 // 서비스 export - 모든 파일에서 동일한 인스턴스 접근을 위해
 export 'package:alarm_from_hell/domain/services/alarm_service.dart';
 export 'package:alarm_from_hell/data/service/alarm_db_service.dart';
+export 'package:alarm_from_hell/domain/services/notification_service.dart';
 
 // 전역 내비게이터 키
 final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
@@ -24,6 +26,9 @@ final alarmService = AlarmService();
 
 // 전역 알람 DB 서비스
 final alarmDBService = AlarmDBService();
+
+// 전역 알림 서비스
+final notificationService = NotificationService();
 
 // 전역 테마 상태 관리
 // ThemeProvider 클래스는 core/utils/theme_provider.dart로 이동됨
@@ -76,6 +81,9 @@ void main() async {
   // 알람 서비스 초기화 (알람 초기화 + 리스너 설정)
   await alarmService.initialize(_navigatorKey);
 
+  // 알림 서비스 초기화
+  await notificationService.init();
+
   // 알림 권한 요청 (Android 및 iOS 모두)
   await requestNotificationPermissions();
 
@@ -117,12 +125,16 @@ class _MyAppState extends State<MyApp> {
     themeProvider.addListener(() {
       setState(() {});
     });
+
+    // 앱이 활성화되면 알림 제거
+    notificationService.onAppActivated();
   }
 
   @override
   void dispose() {
-    // 앱 종료 시 알람 서비스 정리
+    // 앱 종료 시 서비스 정리
     alarmService.dispose();
+    notificationService.dispose();
     super.dispose();
   }
 

@@ -75,8 +75,9 @@ class NotificationService with WidgetsBindingObserver {
   // 앱 생명주기 변화 감지
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.detached ||
-        state == AppLifecycleState.paused) {
+    if (state == AppLifecycleState.detached
+    // ||   state == AppLifecycleState.paused
+    ) {
       // 앱이 종료되거나 백그라운드로 갈 때
       showAppClosedNotification();
       debugPrint('앱 상태 변경: $state - 알림 표시');

@@ -155,7 +155,7 @@ class _HomePageState extends State<HomePage> {
         assetAudioPath: SoundConstants.testAlarmSound,
         loopAudio: true,
         vibrate: true,
-        warningNotificationOnKill: true,
+        warningNotificationOnKill: false,
         androidFullScreenIntent: true,
         volumeSettings: VolumeSettings.fade(
           volume: Platform.isIOS ? 1.0 : 1.0,
@@ -186,7 +186,7 @@ class _HomePageState extends State<HomePage> {
           assetAudioPath: SoundConstants.testAlarmSound,
           loopAudio: true,
           vibrate: true,
-          warningNotificationOnKill: true,
+          warningNotificationOnKill: false,
           androidFullScreenIntent: true,
           volume: 1.0,
           fadeDuration: const Duration(seconds: 3),
@@ -272,7 +272,7 @@ class _HomePageState extends State<HomePage> {
         assetAudioPath: alarm.assetAudioPath,
         loopAudio: alarm.loopAudio,
         vibrate: alarm.vibrate,
-        warningNotificationOnKill: alarm.warningNotificationOnKill,
+        warningNotificationOnKill: false,
         androidFullScreenIntent: alarm.androidFullScreenIntent,
         volumeSettings: VolumeSettings.fade(
           volume: alarm.volume,
@@ -317,6 +317,165 @@ class _HomePageState extends State<HomePage> {
       print('알람(ID: $id) 삭제 완료');
     } catch (e) {
       print('알람 삭제 중 오류 발생: $e');
+    }
+  }
+
+  // 알람 업데이트 메소드
+  Future<void> updateAlarm(Map<String, dynamic> updatedData) async {
+    try {
+      final int alarmId = updatedData['id'];
+
+      // 기존 알람 가져오기
+      final existingAlarm = alarmDBService.getAlarm(alarmId);
+
+      if (existingAlarm == null) {
+        print('업데이트할 알람을 찾을 수 없습니다: $alarmId');
+        return;
+      }
+
+      // 업데이트된 알람 모델 생성
+      final updatedAlarm = existingAlarm.copyWith(
+        alarmTime: updatedData['alarmTime'],
+        alarmMinute: updatedData['alarmMinute'],
+        title: updatedData['title'],
+        body: updatedData['body'],
+      );
+
+      // 기존 알람 중지
+      await alarmService.stopAlarm(alarmId);
+
+      // 새 알람 설정 생성
+      final now = DateTime.now();
+      DateTime alarmDateTime = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        updatedAlarm.alarmTime,
+        updatedAlarm.alarmMinute,
+      );
+
+      // 선택한 시간이 현재 시간보다 이전이면 다음 날로 설정
+      if (alarmDateTime.isBefore(now)) {
+        alarmDateTime = alarmDateTime.add(const Duration(days: 1));
+      }
+
+      // AlarmSettings 생성
+      final alarmSettings = AlarmSettings(
+        id: updatedAlarm.id,
+        dateTime: alarmDateTime,
+        assetAudioPath: updatedAlarm.assetAudioPath,
+        loopAudio: updatedAlarm.loopAudio,
+        vibrate: updatedAlarm.vibrate,
+        warningNotificationOnKill: false,
+        androidFullScreenIntent: updatedAlarm.androidFullScreenIntent,
+        volumeSettings: VolumeSettings.fade(
+          volume: updatedAlarm.volume,
+          fadeDuration: updatedAlarm.fadeDuration,
+          volumeEnforced: updatedAlarm.volumeEnforced,
+        ),
+        notificationSettings: NotificationSettings(
+          title: updatedAlarm.title,
+          body: updatedAlarm.body,
+          stopButton: updatedAlarm.stopButton,
+          icon: 'notification_icon',
+          iconColor: const Color.fromARGB(255, 255, 0, 0),
+        ),
+      );
+
+      // 알람이 활성화 상태였다면 다시 설정
+      bool isSet = false;
+      if (existingAlarm.isActivated) {
+        isSet = await alarmService.setAlarm(alarmSettings);
+      }
+
+      // 활성화 상태 업데이트
+      updatedAlarm.isActivated = isSet;
+
+      // DB에 업데이트
+      await alarmDBService.updateAlarm(updatedAlarm);
+      updateNextAlarmTime();
+
+      print('알람(ID: ${updatedAlarm.id}) 업데이트 완료: ${isSet ? '활성화' : '비활성화'}');
+    } catch (e) {
+      print('알람 업데이트 중 오류 발생: $e');
+    }
+  }
+
+  // 알람 활성화/비활성화 토글 메소드
+  Future<void> toggleAlarm(int alarmId) async {
+    try {
+      // 알람 가져오기
+      final alarm = alarmDBService.getAlarm(alarmId);
+
+      if (alarm == null) {
+        print('토글할 알람을 찾을 수 없습니다: $alarmId');
+        return;
+      }
+
+      // 현재 상태의 반대로 설정
+      bool newState = !alarm.isActivated;
+
+      if (newState) {
+        // 알람 활성화 - 새로 알람 설정
+        // 직접 AlarmSettings 객체 생성
+        final now = DateTime.now();
+        DateTime alarmDateTime = DateTime(
+          now.year,
+          now.month,
+          now.day,
+          alarm.alarmTime,
+          alarm.alarmMinute,
+        );
+
+        // 선택한 시간이 현재 시간보다 이전이면 다음 날로 설정
+        if (alarmDateTime.isBefore(now)) {
+          alarmDateTime = alarmDateTime.add(const Duration(days: 1));
+        }
+
+        final alarmSettings = AlarmSettings(
+          id: alarm.id,
+          dateTime: alarmDateTime,
+          assetAudioPath: alarm.assetAudioPath,
+          loopAudio: alarm.loopAudio,
+          vibrate: alarm.vibrate,
+          warningNotificationOnKill: false, // 앱 종료 알림 비활성화
+          androidFullScreenIntent: alarm.androidFullScreenIntent,
+          volumeSettings: VolumeSettings.fade(
+            volume: alarm.volume,
+            fadeDuration: alarm.fadeDuration,
+            volumeEnforced: alarm.volumeEnforced,
+          ),
+          notificationSettings: NotificationSettings(
+            title: alarm.title,
+            body: alarm.body,
+            stopButton: alarm.stopButton,
+            icon: 'notification_icon',
+            iconColor: const Color.fromARGB(255, 255, 0, 0),
+          ),
+        );
+
+        bool isSet = await alarmService.setAlarm(alarmSettings);
+
+        // DB에 상태 업데이트
+        alarm.isActivated = isSet;
+        await alarmDBService.updateAlarm(alarm);
+
+        print('알람(ID: $alarmId) 활성화 완료');
+      } else {
+        // 알람 비활성화 - 알람 중지
+        await alarmService.stopAlarm(alarmId);
+
+        // DB에 상태 업데이트
+        alarm.isActivated = false;
+        await alarmDBService.updateAlarm(alarm);
+
+        print('알람(ID: $alarmId) 비활성화 완료');
+      }
+
+      // 다음 알람 시간 업데이트
+      updateNextAlarmTime();
+    } catch (e) {
+      print('알람 토글 중 오류 발생: $e');
     }
   }
 
@@ -497,6 +656,8 @@ class _HomePageState extends State<HomePage> {
                       return AlarmListWidget(
                         alarms: alarms,
                         onDeleteAlarm: deleteAlarm,
+                        onUpdateAlarm: updateAlarm,
+                        onToggleAlarm: toggleAlarm,
                       );
                     },
                   ),
@@ -638,7 +799,7 @@ class _HomePageState extends State<HomePage> {
                             assetAudioPath: SoundConstants.testAlarmSound,
                             loopAudio: true,
                             vibrate: true,
-                            warningNotificationOnKill: true,
+                            warningNotificationOnKill: false,
                             androidFullScreenIntent: true,
                             volume: 1.0,
                             fadeDuration: const Duration(seconds: 3),

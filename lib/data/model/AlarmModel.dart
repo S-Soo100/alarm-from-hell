@@ -142,11 +142,11 @@ class AlarmModel {
       assetAudioPath: assetAudioPath,
       loopAudio: loopAudio,
       vibrate: vibrate,
-      warningNotificationOnKill: warningNotificationOnKill,
+      warningNotificationOnKill: false,
       androidFullScreenIntent: androidFullScreenIntent,
       volumeSettings: VolumeSettings.fade(
         volume: volume,
-        fadeDuration: fadeDuration, // getter를 통해 얻은 Duration 사용
+        fadeDuration: fadeDuration,
         volumeEnforced: volumeEnforced,
       ),
       notificationSettings: NotificationSettings(

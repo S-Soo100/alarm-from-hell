@@ -527,6 +527,23 @@ class AlarmItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 요일 표시를 위한 문자열 리스트
+    final List<String> dayNames = ['월', '화', '수', '목', '금', '토', '일'];
+
+    // 활성화된 요일을 문자열로 변환
+    String repeatingDaysText = '';
+    if (alarm.isRepeating) {
+      List<String> activeDays = [];
+      for (int i = 0; i < 7; i++) {
+        if (alarm.repeatingDays[i]) {
+          activeDays.add(dayNames[i]);
+        }
+      }
+      repeatingDaysText = activeDays.join(', ');
+    } else {
+      repeatingDaysText = '반복 안함';
+    }
+
     return Container(
       padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       child: Row(
@@ -558,7 +575,7 @@ class AlarmItem extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  alarm.title,
+                  alarm.body,
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 17,
@@ -575,12 +592,28 @@ class AlarmItem extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: 2),
-                Text(
-                  alarm.body,
-                  style: TextStyle(
-                    color: isDark ? Colors.grey[400] : Colors.grey[600],
-                    fontSize: 14,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      repeatingDaysText,
+                      style: TextStyle(
+                        color: isDark ? Colors.grey[400] : Colors.grey[600],
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    // SizedBox(width: 8),
+                    // Expanded(
+                    //   child: Text(
+                    //     alarm.body,
+                    //     style: TextStyle(
+                    //       color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    //       fontSize: 14,
+                    //     ),
+                    //     overflow: TextOverflow.ellipsis,
+                    //   ),
+                    // ),
+                  ],
                 ),
               ],
             ),

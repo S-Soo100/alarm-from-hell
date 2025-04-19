@@ -1,4 +1,6 @@
 import 'package:alarm_from_hell/core/utils/random_sentense.dart';
+import 'package:alarm_from_hell/data/model/AlarmModel.dart';
+import 'package:alarm_from_hell/data/service/alarm_db_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:alarm_from_hell/ui/home_page.dart';
@@ -216,8 +218,17 @@ class _AlarmExitPageState extends State<AlarmExitPage>
                         alarmService.stopAlarm(alarmSettings!.id);
                         print('알람이 성공적으로 중지되었습니다. ID: ${alarmSettings!.id}');
 
+                        // 알람 모델 가져오기
+                        final alarmModel = AlarmDBService().getAlarm(
+                          alarmSettings!.id,
+                        );
+
                         // 알람 ID를 처리된 것으로 표시 (이 함수가 내부적으로 onAlarmDeactivated 콜백을 호출)
-                        alarmService.markAlarmAsProcessed(alarmSettings!.id);
+                        // 알람 모델 정보를 함께 전달하여 반복 알람 처리
+                        alarmService.markAlarmAsProcessed(
+                          alarmSettings!.id,
+                          alarmModel: alarmModel,
+                        );
 
                         // 안전하게 알람이 중지되었으니 알람 스트림이 다시 발생하지 않도록
                         // 모든 알람을 중지 (이중 호출 방지)
@@ -247,8 +258,16 @@ class _AlarmExitPageState extends State<AlarmExitPage>
                           '디버그 모드: 알람이 성공적으로 중지되었습니다. ID: ${alarmSettings!.id}',
                         );
 
+                        // 알람 모델 가져오기
+                        final alarmModel = AlarmDBService().getAlarm(
+                          alarmSettings!.id,
+                        );
+
                         // 알람 ID를 처리된 것으로 표시
-                        alarmService.markAlarmAsProcessed(alarmSettings!.id);
+                        alarmService.markAlarmAsProcessed(
+                          alarmSettings!.id,
+                          alarmModel: alarmModel,
+                        );
 
                         // 안전하게 알람이 중지되었으니 알람 스트림이 다시 발생하지 않도록
                         // 모든 알람을 중지 (이중 호출 방지)

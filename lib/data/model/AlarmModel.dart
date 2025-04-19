@@ -26,6 +26,16 @@ class AlarmModel {
     required this.body,
     required this.stopButton,
     this.isActivated = false,
+    this.isRepeating = false,
+    this.repeatingDays = const [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+    ],
   }) : fadeDurationMillis = fadeDuration.inMilliseconds;
 
   @HiveField(0)
@@ -75,6 +85,14 @@ class AlarmModel {
   @HiveField(14)
   bool isActivated;
 
+  // 반복 알람 여부
+  @HiveField(15)
+  bool isRepeating;
+
+  // 요일별 반복 설정 (인덱스 0: 월요일, 1: 화요일, ..., 6: 일요일)
+  @HiveField(16)
+  List<bool> repeatingDays;
+
   // 밀리초를 Duration으로 변환
   Duration get fadeDuration => Duration(milliseconds: fadeDurationMillis);
 
@@ -95,6 +113,8 @@ class AlarmModel {
     String? body,
     String? stopButton,
     bool? isActivated,
+    bool? isRepeating,
+    List<bool>? repeatingDays,
   }) {
     return AlarmModel(
       id: id ?? this.id,
@@ -114,11 +134,13 @@ class AlarmModel {
       body: body ?? this.body,
       stopButton: stopButton ?? this.stopButton,
       isActivated: isActivated ?? this.isActivated,
+      isRepeating: isRepeating ?? this.isRepeating,
+      repeatingDays: repeatingDays ?? List.from(this.repeatingDays),
     );
   }
 
   DateTime get myDateTime {
-    DateTime now = DateTime.now();
+    final DateTime now = DateTime.now();
     DateTime alarmDateTime = DateTime(
       now.year,
       now.month,
@@ -127,12 +149,41 @@ class AlarmModel {
       alarmMinute,
     );
 
-    // 알람 시간이 현재 시간보다 이전이면 다음 날로 설정
-    if (alarmDateTime.isBefore(now)) {
-      alarmDateTime = alarmDateTime.add(Duration(days: 1));
+    // 반복 알람이 아닌 경우
+    if (!isRepeating) {
+      // 알람 시간이 현재 시간보다 이전이면 다음 날로 설정
+      if (alarmDateTime.isBefore(now)) {
+        alarmDateTime = alarmDateTime.add(Duration(days: 1));
+      }
+      return alarmDateTime;
     }
 
-    return alarmDateTime;
+    // 반복 알람인 경우 해당 요일이 설정되어 있는지 확인
+    int currentWeekday = now.weekday; // 1: 월요일, 7: 일요일
+
+    // 현재 요일 인덱스 (0: 월요일, 6: 일요일)
+    int currentDayIndex = currentWeekday - 1;
+
+    // 오늘 요일에 알람이 설정되어 있고, 알람 시간이 현재 시간 이후인 경우
+    if (repeatingDays[currentDayIndex] && alarmDateTime.isAfter(now)) {
+      return alarmDateTime;
+    }
+
+    // 다음 알람 요일 찾기
+    int daysToAdd = 1;
+    int nextDayIndex = (currentDayIndex + 1) % 7;
+
+    // 다음 요일부터 검색해서 알람이 설정된 요일 찾기
+    while (daysToAdd <= 7) {
+      if (repeatingDays[nextDayIndex]) {
+        return alarmDateTime.add(Duration(days: daysToAdd));
+      }
+      daysToAdd++;
+      nextDayIndex = (nextDayIndex + 1) % 7;
+    }
+
+    // 만약 어떤 요일도 설정되지 않았다면 다음 날로 설정
+    return alarmDateTime.add(Duration(days: 1));
   }
 
   AlarmSettings toAlarmSettings() {
@@ -157,5 +208,34 @@ class AlarmModel {
         iconColor: Color.fromARGB(255, 36, 33, 33),
       ),
     );
+  }
+
+  // 알람이 울린 후, 반복 알람인 경우 다시 활성화
+  void onAlarmComplete() {
+    if (isRepeating) {
+      // 반복 알람인 경우 활성화 유지
+      isActivated = true;
+    } else {
+      // 일회성 알람인 경우 비활성화
+      isActivated = false;
+    }
+  }
+
+  // 특정 요일 반복 설정
+  void setDayRepeating(int dayIndex, bool value) {
+    if (dayIndex >= 0 && dayIndex < 7) {
+      repeatingDays[dayIndex] = value;
+
+      // 하나라도 요일이 설정되어 있으면 반복 알람으로 설정
+      isRepeating = repeatingDays.any((day) => day);
+    }
+  }
+
+  // 모든 요일 반복 설정
+  void setAllDaysRepeating(bool value) {
+    for (int i = 0; i < 7; i++) {
+      repeatingDays[i] = value;
+    }
+    isRepeating = value;
   }
 }

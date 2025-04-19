@@ -182,6 +182,13 @@ class AlarmListWidget extends StatelessWidget {
     int selectedHour = alarm.alarmTime;
     int selectedMinute = alarm.alarmMinute;
 
+    // 반복 알람 설정
+    bool isRepeating = alarm.isRepeating;
+    List<bool> repeatingDays = List.from(alarm.repeatingDays);
+
+    // 요일 이름
+    final List<String> dayNames = ['월', '화', '수', '목', '금', '토', '일'];
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -200,8 +207,8 @@ class AlarmListWidget extends StatelessWidget {
               padding: EdgeInsets.all(20),
               child: SingleChildScrollView(
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Center(
                       child: Container(
@@ -353,47 +360,136 @@ class AlarmListWidget extends StatelessWidget {
                         ),
                       ),
                     ),
-                    SizedBox(height: 30),
+                    SizedBox(height: 20),
 
-                    // 버튼
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.grey.shade700,
+                    // 반복 알람 스위치
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '반복 알람',
+                            style: TextStyle(
+                              color: textColor,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                          child: Text(
-                            "취소",
-                            style: TextStyle(color: Colors.white),
+                          Switch(
+                            value: isRepeating,
+                            onChanged: (value) {
+                              setState(() {
+                                isRepeating = value;
+
+                                // 모든 요일 선택/해제
+                                if (!value) {
+                                  for (int i = 0; i < 7; i++) {
+                                    repeatingDays[i] = false;
+                                  }
+                                }
+                              });
+                            },
+                            activeColor: isDark ? Colors.blue : Colors.blue,
                           ),
-                        ),
-                        ElevatedButton(
-                          onPressed: () {
-                            // 알람 업데이트 로직
-                            // 여기서는 화면을 닫기만 합니다 (실제 업데이트 기능은 홈페이지에서 구현해야 함)
-                            Navigator.of(context).pop({
-                              'id': alarm.id,
-                              'alarmTime': selectedHour,
-                              'alarmMinute': selectedMinute,
-                              'title': titleController.text,
-                              'body': bodyController.text,
-                            });
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: darkBlue,
-                          ),
-                          child: Text(
-                            "저장",
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                    SizedBox(height: 30),
+
+                    // 요일 선택 UI
+                    if (isRepeating)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0, bottom: 16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '반복 요일',
+                              style: TextStyle(
+                                color: textColor,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            SizedBox(height: 10),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: List.generate(7, (index) {
+                                return GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      repeatingDays[index] =
+                                          !repeatingDays[index];
+                                      // 하나라도 선택되어 있으면 반복 알람 활성화
+                                      isRepeating = repeatingDays.any(
+                                        (day) => day,
+                                      );
+                                    });
+                                  },
+                                  child: Container(
+                                    width: 36,
+                                    height: 36,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color:
+                                          repeatingDays[index]
+                                              ? Colors.blue
+                                              : (isDark
+                                                  ? Colors.grey[800]
+                                                  : Colors.grey[200]),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      dayNames[index],
+                                      style: TextStyle(
+                                        color:
+                                            repeatingDays[index]
+                                                ? Colors.white
+                                                : (isDark
+                                                    ? Colors.grey[400]
+                                                    : Colors.grey[600]),
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    // 저장 버튼
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isDark ? Colors.blue : Colors.blue,
+                          padding: EdgeInsets.symmetric(vertical: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        onPressed: () {
+                          final updatedAlarm = {
+                            'id': alarm.id,
+                            'alarmTime': selectedHour,
+                            'alarmMinute': selectedMinute,
+                            'title': titleController.text,
+                            'body': bodyController.text,
+                            'isRepeating': isRepeating,
+                            'repeatingDays': repeatingDays,
+                          };
+
+                          onUpdateAlarm(updatedAlarm);
+                          Navigator.pop(context);
+                        },
+                        child: Text(
+                          '저장',
+                          style: TextStyle(color: Colors.white, fontSize: 18),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),

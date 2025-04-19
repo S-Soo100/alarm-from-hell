@@ -152,13 +152,28 @@ class AlarmService {
   }
 
   // 알람 ID를 수동으로 처리됨으로 표시하고 비활성화 콜백 호출
-  void markAlarmAsProcessed(int alarmId) {
+  void markAlarmAsProcessed(int alarmId, {AlarmModel? alarmModel}) {
     _processedAlarmIds.add(alarmId);
 
     // 알람 비활성화 콜백 호출 (설정된 경우)
     if (onAlarmDeactivated != null) {
       onAlarmDeactivated!(alarmId);
       print('알람 비활성화 콜백 호출: ID $alarmId');
+
+      // 반복 알람인 경우 다음 알람 설정
+      if (alarmModel != null && alarmModel.isRepeating) {
+        // 알람 모델에서 onAlarmComplete 호출하여 활성화 상태 유지
+        alarmModel.onAlarmComplete();
+
+        // 다음 알람 시간으로 알람 재설정
+        setAlarmFromModel(alarmModel).then((success) {
+          if (success) {
+            print('반복 알람 재설정 성공: ID $alarmId');
+          } else {
+            print('반복 알람 재설정 실패: ID $alarmId');
+          }
+        });
+      }
     }
   }
 

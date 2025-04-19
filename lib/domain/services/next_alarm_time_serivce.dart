@@ -19,10 +19,14 @@ class NextAlarmTimeSerivce {
       return "다음 알람이 없습니다";
     }
 
-    // 현재 시간 이후의 알람만 필터링
+    // 현재 시간 이후의 활성화된 알람만 필터링
     final now = DateTime.now();
     final futureAlarms =
-        alarms.where((alarm) => alarm.myDateTime.isAfter(now)).toList();
+        alarms
+            .where(
+              (alarm) => alarm.myDateTime.isAfter(now) && alarm.isActivated,
+            )
+            .toList();
 
     if (futureAlarms.isEmpty) {
       return "다음 알람이 없습니다";

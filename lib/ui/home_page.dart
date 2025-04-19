@@ -39,8 +39,14 @@ class _HomePageState extends State<HomePage> {
   int _selectedMinute = DateTime.now().minute;
 
   // 알람 입력을 위한 컨트롤러들
-  final TextEditingController _titleController = TextEditingController();
   final TextEditingController _bodyController = TextEditingController();
+
+  // 반복 알람 설정을 위한 변수
+  bool _isRepeating = false;
+  List<bool> _repeatingDays = List.filled(7, false);
+
+  // 요일 이름
+  final List<String> _dayNames = ['월', '화', '수', '목', '금', '토', '일'];
 
   @override
   void initState() {
@@ -321,81 +327,38 @@ class _HomePageState extends State<HomePage> {
   }
 
   // 알람 업데이트 메소드
-  Future<void> updateAlarm(Map<String, dynamic> updatedData) async {
+  Future<void> updateAlarm(Map<String, dynamic> updatedAlarmData) async {
     try {
-      final int alarmId = updatedData['id'];
-
       // 기존 알람 가져오기
-      final existingAlarm = alarmDBService.getAlarm(alarmId);
+      final alarmId = updatedAlarmData['id'] as int;
+      AlarmModel? existingAlarm = alarmDBService.getAlarm(alarmId);
 
       if (existingAlarm == null) {
         print('업데이트할 알람을 찾을 수 없습니다: $alarmId');
         return;
       }
 
-      // 업데이트된 알람 모델 생성
+      // 기존 알람의 값 복사
       final updatedAlarm = existingAlarm.copyWith(
-        alarmTime: updatedData['alarmTime'],
-        alarmMinute: updatedData['alarmMinute'],
-        title: updatedData['title'],
-        body: updatedData['body'],
+        alarmTime: updatedAlarmData['alarmTime'] as int,
+        alarmMinute: updatedAlarmData['alarmMinute'] as int,
+        title: updatedAlarmData['title'] as String,
+        body: updatedAlarmData['body'] as String,
+        isRepeating: updatedAlarmData['isRepeating'] as bool,
+        repeatingDays: updatedAlarmData['repeatingDays'] as List<bool>,
       );
-
-      // 기존 알람 중지
-      await alarmService.stopAlarm(alarmId);
-
-      // 새 알람 설정 생성
-      final now = DateTime.now();
-      DateTime alarmDateTime = DateTime(
-        now.year,
-        now.month,
-        now.day,
-        updatedAlarm.alarmTime,
-        updatedAlarm.alarmMinute,
-      );
-
-      // 선택한 시간이 현재 시간보다 이전이면 다음 날로 설정
-      if (alarmDateTime.isBefore(now)) {
-        alarmDateTime = alarmDateTime.add(const Duration(days: 1));
-      }
-
-      // AlarmSettings 생성
-      final alarmSettings = AlarmSettings(
-        id: updatedAlarm.id,
-        dateTime: alarmDateTime,
-        assetAudioPath: updatedAlarm.assetAudioPath,
-        loopAudio: updatedAlarm.loopAudio,
-        vibrate: updatedAlarm.vibrate,
-        warningNotificationOnKill: false,
-        androidFullScreenIntent: updatedAlarm.androidFullScreenIntent,
-        volumeSettings: VolumeSettings.fade(
-          volume: updatedAlarm.volume,
-          fadeDuration: updatedAlarm.fadeDuration,
-          volumeEnforced: updatedAlarm.volumeEnforced,
-        ),
-        notificationSettings: NotificationSettings(
-          title: updatedAlarm.title,
-          body: updatedAlarm.body,
-          stopButton: updatedAlarm.stopButton,
-          icon: 'notification_icon',
-          iconColor: const Color.fromARGB(255, 255, 0, 0),
-        ),
-      );
-
-      // 알람이 활성화 상태였다면 다시 설정
-      bool isSet = false;
-      if (existingAlarm.isActivated) {
-        isSet = await alarmService.setAlarm(alarmSettings);
-      }
-
-      // 활성화 상태 업데이트
-      updatedAlarm.isActivated = isSet;
 
       // DB에 업데이트
       await alarmDBService.updateAlarm(updatedAlarm);
-      updateNextAlarmTime();
 
-      print('알람(ID: ${updatedAlarm.id}) 업데이트 완료: ${isSet ? '활성화' : '비활성화'}');
+      // 알람이 활성화되어 있다면 알람 재설정
+      if (updatedAlarm.isActivated) {
+        await alarmService.stopAlarm(alarmId);
+        await alarmService.setAlarmFromModel(updatedAlarm);
+      }
+
+      updateNextAlarmTime();
+      print('알람 업데이트 완료: $alarmId');
     } catch (e) {
       print('알람 업데이트 중 오류 발생: $e');
     }
@@ -417,44 +380,7 @@ class _HomePageState extends State<HomePage> {
 
       if (newState) {
         // 알람 활성화 - 새로 알람 설정
-        // 직접 AlarmSettings 객체 생성
-        final now = DateTime.now();
-        DateTime alarmDateTime = DateTime(
-          now.year,
-          now.month,
-          now.day,
-          alarm.alarmTime,
-          alarm.alarmMinute,
-        );
-
-        // 선택한 시간이 현재 시간보다 이전이면 다음 날로 설정
-        if (alarmDateTime.isBefore(now)) {
-          alarmDateTime = alarmDateTime.add(const Duration(days: 1));
-        }
-
-        final alarmSettings = AlarmSettings(
-          id: alarm.id,
-          dateTime: alarmDateTime,
-          assetAudioPath: alarm.assetAudioPath,
-          loopAudio: alarm.loopAudio,
-          vibrate: alarm.vibrate,
-          warningNotificationOnKill: false, // 앱 종료 알림 비활성화
-          androidFullScreenIntent: alarm.androidFullScreenIntent,
-          volumeSettings: VolumeSettings.fade(
-            volume: alarm.volume,
-            fadeDuration: alarm.fadeDuration,
-            volumeEnforced: alarm.volumeEnforced,
-          ),
-          notificationSettings: NotificationSettings(
-            title: alarm.title,
-            body: alarm.body,
-            stopButton: alarm.stopButton,
-            icon: 'notification_icon',
-            iconColor: const Color.fromARGB(255, 255, 0, 0),
-          ),
-        );
-
-        bool isSet = await alarmService.setAlarm(alarmSettings);
+        bool isSet = await alarmService.setAlarmFromModel(alarm);
 
         // DB에 상태 업데이트
         alarm.isActivated = isSet;
@@ -487,7 +413,6 @@ class _HomePageState extends State<HomePage> {
     // 리소스 해제
     _subscription?.cancel();
     alarmService.stopAllAlarms(); // 모든 알람 중지
-    _titleController.dispose();
     _bodyController.dispose();
     super.dispose();
   }
@@ -692,153 +617,243 @@ class _HomePageState extends State<HomePage> {
             width: MediaQuery.sizeOf(context).width * 0.9,
             height: MediaQuery.sizeOf(context).height * 0.7,
             padding: EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "새 알람 추가",
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black,
-                  ),
-                ),
-                SizedBox(height: 20),
-
-                // 시간 선택
-                Text(
-                  "알람 시간",
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: isDark ? Colors.white : Colors.black,
-                  ),
-                ),
-                SizedBox(height: 10),
-                // Cupertino Picker로 대체
-                _buildTimePicker(),
-                SizedBox(height: 20),
-
-                // 제목 입력
-                Text(
-                  "알람 제목",
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: isDark ? Colors.white : Colors.black,
-                  ),
-                ),
-                SizedBox(height: 10),
-                TextField(
-                  controller: _titleController,
-                  style: TextStyle(color: isDark ? Colors.white : Colors.black),
-                  decoration: InputDecoration(
-                    hintText: "알람 제목을 입력하세요",
-                    hintStyle: TextStyle(color: Colors.grey),
-                    border: OutlineInputBorder(),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.grey.shade700),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: darkBlue),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "새 알람 추가",
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black,
                     ),
                   ),
-                ),
-                SizedBox(height: 20),
+                  SizedBox(height: 20),
 
-                // 내용 입력
-                Text(
-                  "알람 내용",
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: isDark ? Colors.white : Colors.black,
-                  ),
-                ),
-                SizedBox(height: 10),
-                TextField(
-                  controller: _bodyController,
-                  style: TextStyle(color: isDark ? Colors.white : Colors.black),
-                  decoration: InputDecoration(
-                    hintText: "알람 내용을 입력하세요",
-                    hintStyle: TextStyle(color: Colors.grey),
-                    border: OutlineInputBorder(),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.grey.shade700),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: darkBlue),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 30),
+                  // 반복 알람 스위치
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '반복 알람',
+                          style: TextStyle(
+                            color: isDark ? Colors.white : Colors.black,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Switch(
+                          value: _isRepeating,
+                          onChanged: (value) {
+                            setState(() {
+                              _isRepeating = value;
 
-                // 버튼
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          _isModalOn = false;
-                        });
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey.shade700,
+                              // 모든 요일 선택/해제
+                              if (!value) {
+                                for (int i = 0; i < 7; i++) {
+                                  _repeatingDays[i] = false;
+                                }
+                              }
+                            });
+                          },
+                          activeColor: isDark ? Colors.blue : Colors.blue,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // 요일 선택 UI
+                  if (_isRepeating)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0, bottom: 16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '반복 요일',
+                            style: TextStyle(
+                              color: isDark ? Colors.white : Colors.black,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          SizedBox(height: 10),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: List.generate(7, (index) {
+                              return GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _repeatingDays[index] =
+                                        !_repeatingDays[index];
+                                    // 하나라도 선택되어 있으면 반복 알람 활성화
+                                    _isRepeating = _repeatingDays.any(
+                                      (day) => day,
+                                    );
+                                  });
+                                },
+                                child: Container(
+                                  width: 36,
+                                  height: 36,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color:
+                                        _repeatingDays[index]
+                                            ? Colors.blue
+                                            : (isDark
+                                                ? Colors.grey[800]
+                                                : Colors.grey[200]),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    _dayNames[index],
+                                    style: TextStyle(
+                                      color:
+                                          _repeatingDays[index]
+                                              ? Colors.white
+                                              : (isDark
+                                                  ? Colors.grey[400]
+                                                  : Colors.grey[600]),
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }),
+                          ),
+                        ],
                       ),
-                      child: Text("취소", style: TextStyle(color: Colors.white)),
                     ),
-                    ElevatedButton(
-                      onPressed: () async {
-                        // 알람 모델 생성
-                        final newAlarmId =
-                            DateTime.now().second * 1000 +
-                            DateTime.now().millisecond;
-                        try {
-                          final newAlarm = AlarmModel(
-                            id: newAlarmId,
-                            alarmTime: _selectedHour,
-                            alarmMinute: _selectedMinute,
-                            assetAudioPath: SoundConstants.testAlarmSound,
-                            loopAudio: true,
-                            vibrate: true,
-                            warningNotificationOnKill: false,
-                            androidFullScreenIntent: true,
-                            volume: 1.0,
-                            fadeDuration: const Duration(seconds: 3),
-                            volumeEnforced: true,
-                            title:
-                                _titleController.text.isEmpty
-                                    ? "알람"
-                                    : _titleController.text,
-                            body:
-                                _bodyController.text.isEmpty
-                                    ? "일어나세요!"
-                                    : _bodyController.text,
-                            stopButton: "중지",
-                            isActivated: false, // 초기 상태는 비활성화
-                          );
 
-                          // 알람 추가 및 모달 닫기
-                          await addAlarm(newAlarm);
-                          print('새 알람 추가 성공: ${newAlarm.id}');
-                        } catch (e) {
-                          print('새 알람 생성 오류: $e');
-                        }
+                  // 시간 선택
+                  Text(
+                    "알람 시간",
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  // Cupertino Picker로 대체
+                  _buildTimePicker(),
+                  SizedBox(height: 20),
 
-                        setState(() {
-                          _isModalOn = false;
-                        });
-
-                        // 입력필드 초기화
-                        _titleController.clear();
-                        _bodyController.clear();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: darkBlue,
+                  // 알람 내용 입력
+                  Text(
+                    "알람 내용",
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  TextField(
+                    controller: _bodyController,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: "알람 내용을 입력하세요",
+                      hintStyle: TextStyle(color: Colors.grey),
+                      border: OutlineInputBorder(),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.grey.shade700),
                       ),
-                      child: Text("저장", style: TextStyle(color: Colors.white)),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: darkBlue),
+                      ),
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                  SizedBox(height: 20),
+
+                  SizedBox(height: 30),
+
+                  // 버튼
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () {
+                          setState(() {
+                            _isModalOn = false;
+                            // 모달 닫을 때 입력값 초기화
+                            _bodyController.clear();
+                            _isRepeating = false;
+                            _repeatingDays = List.filled(7, false);
+                          });
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey.shade700,
+                        ),
+                        child: Text(
+                          "취소",
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () async {
+                          // 알람 모델 생성
+                          final newAlarmId =
+                              DateTime.now().second * 1000 +
+                              DateTime.now().millisecond;
+                          try {
+                            final newAlarm = AlarmModel(
+                              id: newAlarmId,
+                              alarmTime: _selectedHour,
+                              alarmMinute: _selectedMinute,
+                              assetAudioPath: SoundConstants.testAlarmSound,
+                              loopAudio: true,
+                              vibrate: true,
+                              warningNotificationOnKill: false,
+                              androidFullScreenIntent: true,
+                              volume: 1.0,
+                              fadeDuration: const Duration(seconds: 3),
+                              volumeEnforced: true,
+                              title:
+                                  _bodyController.text.isEmpty
+                                      ? "알람"
+                                      : _bodyController.text,
+                              body:
+                                  _bodyController.text.isEmpty
+                                      ? "일어나세요!"
+                                      : _bodyController.text,
+                              stopButton: "중지",
+                              isActivated: false, // 초기 상태는 비활성화
+                              isRepeating: _isRepeating,
+                              repeatingDays: List.from(_repeatingDays),
+                            );
+
+                            // 알람 추가 및 모달 닫기
+                            await addAlarm(newAlarm);
+                            print('새 알람 추가 성공: ${newAlarm.id}');
+                          } catch (e) {
+                            print('새 알람 생성 오류: $e');
+                          }
+
+                          setState(() {
+                            _isModalOn = false;
+
+                            // 입력필드 초기화
+                            _bodyController.clear();
+                            _isRepeating = false;
+                            _repeatingDays = List.filled(7, false);
+                          });
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: darkBlue,
+                        ),
+                        child: Text(
+                          "저장",
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         )

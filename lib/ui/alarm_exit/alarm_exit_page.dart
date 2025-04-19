@@ -70,6 +70,8 @@ class _AlarmExitPageState extends State<AlarmExitPage>
   void dispose() {
     _textController.dispose();
     _animationController.dispose();
+    // 페이지가 닫힐 때 반복 알림 중지
+    notificationService.stopRepeatingNotification();
     super.dispose();
   }
 

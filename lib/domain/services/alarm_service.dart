@@ -3,6 +3,7 @@ import 'package:alarm/alarm.dart';
 import 'package:alarm/model/alarm_settings.dart';
 import 'package:alarm_from_hell/data/model/AlarmModel.dart';
 import 'package:flutter/material.dart';
+import 'package:alarm_from_hell/main.dart'; // 알림 서비스 가져오기
 
 class AlarmService {
   // 싱글톤 패턴 구현
@@ -55,6 +56,7 @@ class AlarmService {
       }
 
       final alarmId = alarmSet.alarms.first.id;
+      final AlarmSettings alarmSettings = alarmSet.alarms.first;
 
       // 이미 처리된 알람인지 확인
       if (_processedAlarmIds.contains(alarmId)) {
@@ -65,7 +67,13 @@ class AlarmService {
       // 처리된 알람 목록에 추가
       _processedAlarmIds.add(alarmId);
 
-      print('알람이 울립니다! ID: ${alarmSet.alarms.first.id}');
+      print('알람이 울립니다! ID: ${alarmId}');
+
+      // 반복 알림 시작 - 알람 알림 표시 (백그라운드에서 10초마다 반복)
+      notificationService.startRepeatingNotification(
+        alarmSettings.notificationSettings?.title ?? '알람',
+        alarmSettings.notificationSettings?.body ?? '알람이 울립니다!',
+      );
 
       // 알람이 울리면 특정 페이지로 이동
       // 메인 스레드에서 실행해야 UI 업데이트가 가능합니다
@@ -98,17 +106,22 @@ class AlarmService {
   Future<bool> setAlarmFromModel(AlarmModel alarmModel) async {
     try {
       final alarmSettings = alarmModel.toAlarmSettings();
-      return await Alarm.set(alarmSettings: alarmSettings);
+      return await setAlarm(alarmSettings);
     } catch (e) {
-      print('알람 설정 중 오류 발생: $e');
+      print('알람 모델에서 알람 설정 중 오류 발생: $e');
       return false;
     }
   }
 
-  // 알람 중지
+  // 단일 알람 중지
   Future<bool> stopAlarm(int alarmId) async {
     try {
+      print('알람 중지: ID $alarmId');
       await Alarm.stop(alarmId);
+
+      // 반복 알림 중지
+      notificationService.stopRepeatingNotification();
+
       return true;
     } catch (e) {
       print('알람 중지 중 오류 발생: $e');
@@ -117,13 +130,15 @@ class AlarmService {
   }
 
   // 모든 알람 중지
-  Future<bool> stopAllAlarms() async {
+  Future<void> stopAllAlarms() async {
     try {
+      print('모든 알람 중지');
       await Alarm.stopAll();
-      return true;
+
+      // 반복 알림 중지
+      notificationService.stopRepeatingNotification();
     } catch (e) {
       print('모든 알람 중지 중 오류 발생: $e');
-      return false;
     }
   }
 
@@ -154,6 +169,9 @@ class AlarmService {
   // 알람 ID를 수동으로 처리됨으로 표시하고 비활성화 콜백 호출
   void markAlarmAsProcessed(int alarmId, {AlarmModel? alarmModel}) {
     _processedAlarmIds.add(alarmId);
+
+    // 반복 알림 중지
+    notificationService.stopRepeatingNotification();
 
     // 알람 비활성화 콜백 호출 (설정된 경우)
     if (onAlarmDeactivated != null) {
@@ -189,5 +207,8 @@ class AlarmService {
       _subscription!.cancel();
       _subscription = null;
     }
+
+    // 반복 알림 중지
+    notificationService.stopRepeatingNotification();
   }
 }

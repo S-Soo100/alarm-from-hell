@@ -1,5 +1,6 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/material.dart';
+import 'dart:async';
 
 class NotificationService with WidgetsBindingObserver {
   static final NotificationService _instance = NotificationService._internal();
@@ -21,6 +22,13 @@ class NotificationService with WidgetsBindingObserver {
 
   // 알림 ID
   static const int _appClosedNotificationId = 999;
+  static const int _persistentAlarmNotificationId = 888;
+
+  // 반복 알림 타이머
+  Timer? _repeatingNotificationTimer;
+  bool _isAlarmActive = false;
+  String _alarmTitle = '';
+  String _alarmBody = '';
 
   // 초기화
   Future<void> init() async {
@@ -120,6 +128,9 @@ class NotificationService with WidgetsBindingObserver {
   void onAppActivated() {
     // 앱이 다시 활성화되면 종료 알림 제거
     flutterLocalNotificationsPlugin.cancel(_appClosedNotificationId);
+
+    // 알람 반복 알림도 중지
+    stopRepeatingNotification();
   }
 
   // 수동으로 알림 표시 (테스트용)
@@ -150,8 +161,77 @@ class NotificationService with WidgetsBindingObserver {
     );
   }
 
+  // 알람 반복 알림 시작
+  void startRepeatingNotification(String title, String body) {
+    // 이전에 실행 중인 타이머가 있으면 중지
+    stopRepeatingNotification();
+
+    _isAlarmActive = true;
+    _alarmTitle = title;
+    _alarmBody = body;
+
+    // 즉시 첫 알림 표시
+    _showAlarmNotification(title, body);
+
+    // 10초마다 알림 반복
+    _repeatingNotificationTimer = Timer.periodic(Duration(seconds: 10), (_) {
+      if (_isAlarmActive) {
+        _showAlarmNotification(_alarmTitle, _alarmBody);
+      } else {
+        stopRepeatingNotification();
+      }
+    });
+
+    debugPrint('10초마다 반복 알림 시작: $title');
+  }
+
+  // 반복 알림 중지
+  void stopRepeatingNotification() {
+    _repeatingNotificationTimer?.cancel();
+    _repeatingNotificationTimer = null;
+    _isAlarmActive = false;
+
+    // 알람 알림 취소
+    flutterLocalNotificationsPlugin.cancel(_persistentAlarmNotificationId);
+    debugPrint('반복 알림 중지됨');
+  }
+
+  // 알람 알림 표시 (내부 메소드)
+  Future<void> _showAlarmNotification(String title, String body) async {
+    const AndroidNotificationDetails androidNotificationDetails =
+        AndroidNotificationDetails(
+          _channelId,
+          _channelName,
+          channelDescription: _channelDesc,
+          importance: Importance.max,
+          priority: Priority.high,
+          fullScreenIntent: true,
+          visibility: NotificationVisibility.public,
+        );
+
+    const NotificationDetails notificationDetails = NotificationDetails(
+      android: androidNotificationDetails,
+      iOS: DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        interruptionLevel: InterruptionLevel.critical, // 중요 알림 (방해 금지 모드에서도 표시)
+      ),
+    );
+
+    await flutterLocalNotificationsPlugin.show(
+      _persistentAlarmNotificationId,
+      title,
+      body,
+      notificationDetails,
+    );
+
+    debugPrint('알람 알림 표시됨: $title');
+  }
+
   // 리소스 해제
   void dispose() {
+    stopRepeatingNotification();
     WidgetsBinding.instance.removeObserver(this);
   }
 }

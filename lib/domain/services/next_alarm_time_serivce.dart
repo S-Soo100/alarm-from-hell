@@ -41,6 +41,11 @@ class NextAlarmTimeSerivce {
     final hours = difference.inHours;
     final minutes = difference.inMinutes % 60;
 
+    // 알람이 1~2분 내로 울리는 경우
+    if (difference.inMinutes <= 2 && hours == 0) {
+      return "곧 알람이 울립니다!";
+    }
+
     return "$hours시간 $minutes분 후에 알람이 울립니다.";
   }
 }

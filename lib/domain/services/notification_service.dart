@@ -42,7 +42,6 @@ class NotificationService with WidgetsBindingObserver {
           requestSoundPermission: true,
           requestBadgePermission: true,
           requestAlertPermission: true,
-          onDidReceiveLocalNotification: (id, title, body, payload) async {},
         );
 
     // 초기화 설정

@@ -32,13 +32,19 @@ class AlarmModelAdapter extends TypeAdapter<AlarmModel> {
       body: fields[12] as String,
       stopButton: fields[13] as String,
       isActivated: fields[14] as bool,
+      isRepeating:
+          fields.containsKey(15) ? (fields[15] as bool?) ?? false : false,
+      repeatingDays:
+          fields.containsKey(16)
+              ? ((fields[16] as List?)?.cast<bool>()) ?? List.filled(7, false)
+              : List.filled(7, false),
     );
   }
 
   @override
   void write(BinaryWriter writer, AlarmModel obj) {
     writer
-      ..writeByte(15)
+      ..writeByte(17)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -68,7 +74,11 @@ class AlarmModelAdapter extends TypeAdapter<AlarmModel> {
       ..writeByte(13)
       ..write(obj.stopButton)
       ..writeByte(14)
-      ..write(obj.isActivated);
+      ..write(obj.isActivated)
+      ..writeByte(15)
+      ..write(obj.isRepeating)
+      ..writeByte(16)
+      ..write(obj.repeatingDays);
   }
 
   @override

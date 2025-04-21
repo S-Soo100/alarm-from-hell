@@ -42,7 +42,7 @@ dependencies:
   shared_preferences: ^2.2.4
   provider: ^6.1.1
   # 알림 전송을 위한 패키지
-  flutter_local_notifications: ^16.3.0
+  flutter_local_notifications: ^19.1.0
   # 앱 생명주기 관리는 Flutter 기본 제공 WidgetsBindingObserver 사용
 
 dev_dependencies:

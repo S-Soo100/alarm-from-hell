@@ -76,6 +76,7 @@ flutter:
     - assets/sounds/bell.mp3
     - assets/sounds/warning.mp3
     - assets/sounds/buzzer.mp3
+    - assets/sounds/retro.mp3
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

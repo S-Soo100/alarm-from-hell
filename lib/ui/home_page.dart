@@ -59,6 +59,10 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+
+    // 알람 비활성화 콜백 설정
+    alarmService.onAlarmDeactivated = removeTriggeredAlarm;
+
     _initializeAlarm();
   }
 
@@ -156,10 +160,13 @@ class _HomePageState extends State<HomePage> {
       // 알람 ID는 Int 최대값(2147483647)보다 작아야 함
       final alarmId = 12345;
 
+      // 테스트 알람 사운드 경로 확인 (assets/ 접두사 관리)
+      final String testAlarmSound = SoundConstants.testAlarmSound;
+
       final alarmSettings = AlarmSettings(
         id: alarmId,
         dateTime: alarmTime,
-        assetAudioPath: SoundConstants.testAlarmSound,
+        assetAudioPath: testAlarmSound,
         loopAudio: true,
         vibrate: true,
         warningNotificationOnKill: false,
@@ -190,7 +197,7 @@ class _HomePageState extends State<HomePage> {
           id: alarmId,
           alarmTime: alarmTime.hour,
           alarmMinute: alarmTime.minute,
-          assetAudioPath: SoundConstants.testAlarmSound,
+          assetAudioPath: testAlarmSound,
           loopAudio: true,
           vibrate: true,
           warningNotificationOnKill: false,
@@ -509,13 +516,21 @@ class _HomePageState extends State<HomePage> {
     try {
       final newAlarmId =
           DateTime.now().second * 1000 + DateTime.now().millisecond;
+
+      // 선택된 사운드 경로 가져오기
+      final soundPath =
+          SoundConstants.alarmSounds[_selectedSound] ??
+          SoundConstants.testAlarmSound;
+
+      // assets/ 경로가 이미 포함되어 있는지 확인
+      final assetAudioPath =
+          soundPath.startsWith("assets/") ? soundPath : "assets/$soundPath";
+
       final newAlarm = AlarmModel(
         id: newAlarmId,
         alarmTime: _selectedHour,
         alarmMinute: _selectedMinute,
-        assetAudioPath:
-            SoundConstants.alarmSounds[_selectedSound] ??
-            SoundConstants.testAlarmSound,
+        assetAudioPath: assetAudioPath,
         loopAudio: true,
         vibrate: true,
         warningNotificationOnKill: false,

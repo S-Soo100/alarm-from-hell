@@ -36,7 +36,7 @@ class _AddAlarmPageState extends State<AddAlarmPage> {
   @override
   void dispose() {
     _bodyController.dispose();
-    _soundService.dispose();
+    _soundService.reset();
     super.dispose();
   }
 
@@ -45,13 +45,21 @@ class _AddAlarmPageState extends State<AddAlarmPage> {
     try {
       final newAlarmId =
           DateTime.now().second * 1000 + DateTime.now().millisecond;
+
+      // 선택된 사운드 경로 가져오기
+      final soundPath =
+          SoundConstants.alarmSounds[_selectedSound] ??
+          SoundConstants.testAlarmSound;
+
+      // assets/ 경로가 이미 포함되어 있는지 확인
+      final assetAudioPath =
+          soundPath.startsWith("assets/") ? soundPath : "assets/$soundPath";
+
       final newAlarm = AlarmModel(
         id: newAlarmId,
         alarmTime: _selectedHour,
         alarmMinute: _selectedMinute,
-        assetAudioPath:
-            SoundConstants.alarmSounds[_selectedSound] ??
-            SoundConstants.testAlarmSound,
+        assetAudioPath: assetAudioPath,
         loopAudio: true,
         vibrate: true,
         warningNotificationOnKill: false,
@@ -172,7 +180,12 @@ class _AddAlarmPageState extends State<AddAlarmPage> {
       final soundPath =
           SoundConstants.alarmSounds[_selectedSound] ??
           SoundConstants.testAlarmSound;
-      await _soundService.playSound(soundPath);
+
+      // assets/ 경로가 이미 포함되어 있는지 확인
+      final assetAudioPath =
+          soundPath.startsWith("assets/") ? soundPath : "assets/$soundPath";
+
+      await _soundService.playSound(assetAudioPath);
       setState(() {
         _isPlaying = true;
       });
@@ -420,7 +433,13 @@ class _AddAlarmPageState extends State<AddAlarmPage> {
               children: [
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      // 사운드가 재생 중이면 먼저 중지합니다
+                      if (_isPlaying) {
+                        _soundService.stopSound();
+                      }
+                      Navigator.pop(context);
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.grey.shade700,
                       padding: EdgeInsets.symmetric(vertical: 16),
@@ -439,6 +458,14 @@ class _AddAlarmPageState extends State<AddAlarmPage> {
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () async {
+                      // 사운드가 재생 중이면 먼저 중지합니다
+                      if (_isPlaying) {
+                        await _soundService.stopSound();
+                        setState(() {
+                          _isPlaying = false;
+                        });
+                      }
+
                       final newAlarm = await _createNewAlarmModel();
                       if (newAlarm != null) {
                         Navigator.pop(context, newAlarm);

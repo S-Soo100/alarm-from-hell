@@ -237,7 +237,12 @@ class _AlarmExitPageState extends State<AlarmExitPage>
                         alarmService.stopAllAlarms();
 
                         // 홈 페이지로 돌아가기
-                        Navigator.of(context).pop();
+                        // 바로 pop 하지 않고 약간의 지연을 줘서 잔여 탭 이벤트 방지
+                        Future.delayed(Duration(milliseconds: 300), () {
+                          if (mounted && Navigator.canPop(context)) {
+                            Navigator.of(context).pop();
+                          }
+                        });
                       }
                     },
                     style: ElevatedButton.styleFrom(
@@ -276,7 +281,7 @@ class _AlarmExitPageState extends State<AlarmExitPage>
                         alarmService.stopAllAlarms();
                       }
 
-                      // 페이지 닫기 - 약간 지연 처리
+                      // 페이지 닫기 - 지연 처리 유지
                       Future.delayed(Duration(milliseconds: 500), () {
                         if (mounted && Navigator.canPop(context)) {
                           Navigator.of(context).pop();

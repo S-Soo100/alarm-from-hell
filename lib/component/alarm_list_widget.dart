@@ -24,146 +24,204 @@ class AlarmListWidget extends StatelessWidget {
 
     return Material(
       color: Colors.transparent,
-      child: Container(
-        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(left: 8.0, bottom: 8.0),
-              child: Text(
-                "알람 목록",
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: textColor,
-                ),
-              ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 알람 목록 제목 및 개수 표시
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 8.0,
             ),
-            alarms.isEmpty
-                ? Container(
-                  padding: EdgeInsets.symmetric(vertical: 40),
-                  alignment: Alignment.center,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "알람 목록",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
+                ),
+                // 알람 개수 표시 (활성화된 알람 / 전체 알람)
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
-                    color: cardColor,
+                    color: isDark ? Color(0xFF1F2E36) : Color(0xFFE8F0F5),
                     borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withAlpha(isDark ? 30 : 13),
-                        spreadRadius: 1,
-                        blurRadius: 3,
-                        offset: Offset(0, 1),
-                      ),
-                    ],
                   ),
                   child: Text(
-                    "등록된 알람이 없습니다",
+                    "${alarms.where((a) => a.isActivated).length}/${alarms.length}",
                     style: TextStyle(
-                      color: isDark ? Colors.grey[400] : Colors.grey[500],
-                      fontSize: 16,
-                    ),
-                  ),
-                )
-                : Container(
-                  decoration: BoxDecoration(
-                    color: cardColor,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withAlpha(isDark ? 30 : 13),
-                        spreadRadius: 1,
-                        blurRadius: 3,
-                        offset: Offset(0, 1),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: ListView.builder(
-                      padding: EdgeInsets.zero,
-                      itemBuilder: (BuildContext context, int index) {
-                        final alarm = alarms[index];
-                        return Dismissible(
-                          key: Key(alarm.id.toString()),
-                          direction: DismissDirection.endToStart,
-                          background: Container(
-                            alignment: Alignment.centerRight,
-                            padding: EdgeInsets.only(right: 20.0),
-                            color: const Color.fromARGB(255, 122, 122, 122),
-                            child: Icon(Icons.delete, color: Colors.white),
-                          ),
-                          confirmDismiss: (direction) async {
-                            return await showDialog(
-                              context: context,
-                              builder: (BuildContext context) {
-                                return AlertDialog(
-                                  backgroundColor: cardColor,
-                                  title: Text(
-                                    '알람 삭제',
-                                    style: TextStyle(color: textColor),
-                                  ),
-                                  content: Text(
-                                    '이 알람을 삭제하시겠습니까?',
-                                    style: TextStyle(color: textColor),
-                                  ),
-                                  actions: <Widget>[
-                                    TextButton(
-                                      onPressed:
-                                          () =>
-                                              Navigator.of(context).pop(false),
-                                      child: Text('아니오'),
-                                    ),
-                                    TextButton(
-                                      onPressed:
-                                          () => Navigator.of(context).pop(true),
-                                      child: Text('예'),
-                                    ),
-                                  ],
-                                );
-                              },
-                            );
-                          },
-                          onDismissed: (direction) {
-                            onDeleteAlarm(alarm.id);
-                          },
-                          child: Column(
-                            children: [
-                              GestureDetector(
-                                onTap: () {
-                                  _showEditAlarmModal(context, alarm);
-                                },
-                                behavior: HitTestBehavior.opaque,
-                                child: AlarmItem(
-                                  alarm: alarm,
-                                  onDelete: () => onDeleteAlarm(alarm.id),
-                                  isDark: isDark,
-                                  onToggle: onToggleAlarm,
-                                ),
-                              ),
-                              if (index < alarms.length - 1)
-                                Padding(
-                                  padding: const EdgeInsets.only(left: 70.0),
-                                  child: Container(
-                                    height: 0.5,
-                                    color:
-                                        isDark
-                                            ? Colors.grey[700]
-                                            : Colors.grey[300],
-                                  ),
-                                ),
-                            ],
-                          ),
-                        );
-                      },
-                      itemCount: alarms.length,
-                      shrinkWrap: true,
-                      physics: NeverScrollableScrollPhysics(),
+                      color: isDark ? Colors.white70 : Color(0xFF1F2E36),
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-          ],
-        ),
+              ],
+            ),
+          ),
+
+          // 알람 목록 영역
+          Expanded(
+            child: Container(
+              margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child:
+                  alarms.isEmpty
+                      ? Container(
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: cardColor,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withAlpha(isDark ? 30 : 13),
+                              spreadRadius: 1,
+                              blurRadius: 3,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              CupertinoIcons.alarm,
+                              size: 48,
+                              color:
+                                  isDark ? Colors.grey[600] : Colors.grey[400],
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              "등록된 알람이 없습니다",
+                              style: TextStyle(
+                                color:
+                                    isDark
+                                        ? Colors.grey[400]
+                                        : Colors.grey[600],
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              "+ 버튼을 눌러 알람을 추가하세요",
+                              style: TextStyle(
+                                color:
+                                    isDark
+                                        ? Colors.grey[600]
+                                        : Colors.grey[500],
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                      : Container(
+                        decoration: BoxDecoration(
+                          color: cardColor,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withAlpha(isDark ? 30 : 13),
+                              spreadRadius: 1,
+                              blurRadius: 3,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: ListView.separated(
+                            padding: EdgeInsets.symmetric(vertical: 6),
+                            itemBuilder: (BuildContext context, int index) {
+                              final alarm = alarms[index];
+                              return Dismissible(
+                                key: Key(alarm.id.toString()),
+                                direction: DismissDirection.endToStart,
+                                background: Container(
+                                  alignment: Alignment.centerRight,
+                                  padding: EdgeInsets.only(right: 20.0),
+                                  color: Colors.red.shade700,
+                                  child: Icon(
+                                    Icons.delete_rounded,
+                                    color: Colors.white,
+                                    size: 28,
+                                  ),
+                                ),
+                                confirmDismiss: (direction) async {
+                                  return await showDialog(
+                                    context: context,
+                                    builder: (BuildContext context) {
+                                      return AlertDialog(
+                                        backgroundColor: cardColor,
+                                        title: Text(
+                                          '알람 삭제',
+                                          style: TextStyle(color: textColor),
+                                        ),
+                                        content: Text(
+                                          '이 알람을 삭제하시겠습니까?',
+                                          style: TextStyle(color: textColor),
+                                        ),
+                                        actions: <Widget>[
+                                          TextButton(
+                                            onPressed:
+                                                () => Navigator.of(
+                                                  context,
+                                                ).pop(false),
+                                            child: Text('아니오'),
+                                          ),
+                                          TextButton(
+                                            onPressed:
+                                                () => Navigator.of(
+                                                  context,
+                                                ).pop(true),
+                                            child: Text('예'),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  );
+                                },
+                                onDismissed: (direction) {
+                                  onDeleteAlarm(alarm.id);
+                                },
+                                child: GestureDetector(
+                                  onTap: () {
+                                    _showEditAlarmModal(context, alarm);
+                                  },
+                                  behavior: HitTestBehavior.opaque,
+                                  child: AlarmItem(
+                                    alarm: alarm,
+                                    onDelete: () => onDeleteAlarm(alarm.id),
+                                    isDark: isDark,
+                                    onToggle: onToggleAlarm,
+                                  ),
+                                ),
+                              );
+                            },
+                            separatorBuilder: (context, index) {
+                              return Padding(
+                                padding: const EdgeInsets.only(left: 84.0),
+                                child: Container(
+                                  height: 0.5,
+                                  color:
+                                      isDark
+                                          ? Colors.grey[800]
+                                          : Colors.grey[300],
+                                ),
+                              );
+                            },
+                            itemCount: alarms.length,
+                            shrinkWrap: false,
+                            physics: BouncingScrollPhysics(),
+                          ),
+                        ),
+                      ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -539,61 +597,106 @@ class AlarmItem extends StatelessWidget {
           activeDays.add(dayNames[i]);
         }
       }
-      repeatingDaysText = activeDays.join(', ');
+      repeatingDaysText = activeDays.join(' · ');
     } else {
-      repeatingDaysText = '반복 안함';
+      repeatingDaysText = '일회성 알람';
     }
 
+    // 알람 상태에 따른 색상 설정
+    final Color activeColor = Color(0xFF34C759); // 활성화 색상 (녹색)
+    final Color inactiveColor =
+        isDark ? Colors.grey.shade500 : Colors.grey.shade600; // 비활성화 색상
+    final Color timeColor = alarm.isActivated ? activeColor : inactiveColor;
+
     return Container(
-      padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      padding: EdgeInsets.symmetric(vertical: 14, horizontal: 16),
       child: Row(
         children: [
+          // 알람 아이콘 및 상태 표시 (활성화/비활성화)
           GestureDetector(
             onTap: () {
               onToggle(alarm.id);
             },
             child: Container(
-              height: 40,
-              width: 40,
+              height: 48,
+              width: 48,
               decoration: BoxDecoration(
                 color:
                     alarm.isActivated
-                        ? Color(0xFF34C759).withAlpha(isDark ? 70 : 51)
-                        : Colors.grey.withAlpha(isDark ? 70 : 51),
-                borderRadius: BorderRadius.circular(20),
+                        ? activeColor.withOpacity(0.15)
+                        : inactiveColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: alarm.isActivated ? activeColor : inactiveColor,
+                  width: 1.5,
+                ),
               ),
               child: Icon(
-                CupertinoIcons.alarm,
-                color: alarm.isActivated ? Color(0xFF34C759) : Colors.grey,
-                size: 20,
+                CupertinoIcons.alarm_fill,
+                color: alarm.isActivated ? activeColor : inactiveColor,
+                size: 22,
               ),
             ),
           ),
-          SizedBox(width: 16),
+          SizedBox(width: 18),
+
+          // 알람 정보 표시
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // 시간 표시 (더 크게)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      "${alarm.myDateTime.hour.toString().padLeft(2, '0')}:${alarm.myDateTime.minute.toString().padLeft(2, '0')}",
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w600,
+                        color: timeColor,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    // 알람 상태 표시 (활성화/비활성화)
+                    Text(
+                      alarm.isActivated ? "활성화" : "비활성화",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: timeColor,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 6),
+
+                // 알람 제목/내용
                 Text(
                   alarm.body,
                   style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 17,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 16,
                     color: isDark ? Colors.white : Colors.black87,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 SizedBox(height: 4),
-                Text(
-                  "${alarm.myDateTime.hour.toString().padLeft(2, '0')}:${alarm.myDateTime.minute.toString().padLeft(2, '0')}",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: alarm.isActivated ? Color(0xFF34C759) : Colors.grey,
-                  ),
-                ),
-                SizedBox(height: 2),
+
+                // 반복 요일 정보
                 Row(
                   children: [
+                    Icon(
+                      alarm.isRepeating
+                          ? Icons.repeat
+                          : Icons.looks_one_outlined,
+                      size: 14,
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    ),
+                    SizedBox(width: 4),
                     Text(
                       repeatingDaysText,
                       style: TextStyle(
@@ -602,17 +705,6 @@ class AlarmItem extends StatelessWidget {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    // SizedBox(width: 8),
-                    // Expanded(
-                    //   child: Text(
-                    //     alarm.body,
-                    //     style: TextStyle(
-                    //       color: isDark ? Colors.grey[400] : Colors.grey[600],
-                    //       fontSize: 14,
-                    //     ),
-                    //     overflow: TextOverflow.ellipsis,
-                    //   ),
-                    // ),
                   ],
                 ),
               ],
